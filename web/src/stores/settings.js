@@ -11,24 +11,31 @@ export const useSettingsStore = defineStore('settings', () => {
     week_start: '1'
   })
   const currencies = ref([])
+  const usedCurrencies = ref([])
   const icons = ref([])
   const loading = ref(false)
 
   async function fetch() {
     loading.value = true
     try {
-      const [s, c, i] = await Promise.all([
+      const [s, c, i, used] = await Promise.all([
         api.get('/settings'),
         api.get('/currencies'),
-        api.get('/icons')
+        api.get('/icons'),
+        api.get('/currencies/used')
       ])
       settings.value = { ...settings.value, ...s }
       currencies.value = c
       icons.value = i
+      usedCurrencies.value = used
       applyTheme()
     } finally {
       loading.value = false
     }
+  }
+
+  async function fetchUsedCurrencies() {
+    usedCurrencies.value = await api.get('/currencies/used')
   }
 
   async function update(data) {
@@ -55,7 +62,9 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function getCurrencySymbol(code) {
-    const c = currencies.value.find(c => c.code === code)
+    const c =
+      currencies.value.find(currency => currency.code === code) ||
+      usedCurrencies.value.find(currency => currency.code === code)
     return c ? c.symbol : code
   }
 
@@ -78,9 +87,11 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     settings,
     currencies,
+    usedCurrencies,
     icons,
     loading,
     fetch,
+    fetchUsedCurrencies,
     update,
     applyTheme,
     getCurrencySymbol,

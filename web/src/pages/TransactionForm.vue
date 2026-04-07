@@ -11,17 +11,19 @@
         v-model="form.category_id"
         :type="form.type"
         show-type
+        :type-switch-disabled="isEdit"
+        manage-action
+        manage-label="快捷设置分类"
         label="选择分类"
         @update:type="form.type = $event"
+        @manage="showQuickCategoryDialog = true"
       />
 
       <!-- Amount + Currency -->
       <CurrencyInput
         v-model="form.amount"
         :currency="form.currency"
-        :exchange-rate="form.exchange_rate"
         @update:currency="form.currency = $event"
-        @update:exchange-rate="form.exchange_rate = $event"
       />
 
       <!-- Date -->
@@ -67,6 +69,14 @@
       @confirm="handleDelete"
       @cancel="showDelete = false"
     />
+
+    <CategoryQuickCreateDialog
+      :show="showQuickCategoryDialog"
+      :type="form.type"
+      :preferred-parent-id="preferredParentId"
+      @close="showQuickCategoryDialog = false"
+      @created="handleCategoryCreated"
+    />
   </div>
 </template>
 
@@ -74,61 +84,63 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTransactionsStore } from '../stores/transactions.js'
+import { useCategoriesStore } from '../stores/categories.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { api } from '../api/client.js'
 import CategoryPicker from '../components/CategoryPicker.vue'
+import CategoryQuickCreateDialog from '../components/CategoryQuickCreateDialog.vue'
 import CurrencyInput from '../components/CurrencyInput.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useTransactionsStore()
+const categoriesStore = useCategoriesStore()
 const settingsStore = useSettingsStore()
 
 const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
 const errorMsg = ref('')
 const showDelete = ref(false)
+const showQuickCategoryDialog = ref(false)
 
 const form = ref({
   type: 'expense',
   amount: null,
   currency: settingsStore.settings.default_currency,
-  exchange_rate: 1,
   category_id: null,
   date: new Date().toISOString().split('T')[0],
   note: ''
 })
 
+const preferredParentId = computed(() => {
+  const category = categoriesStore.flatList.find(
+    item => item.id === form.value.category_id
+  )
+
+  return category ? category.parent_id || category.id : null
+})
+
 async function loadTransaction() {
   if (!isEdit.value) return
   try {
-    const data = await (
-      await fetch(`/api/transactions`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      })
-    ).json()
-    // Fetch the specific transaction
-    const res = await fetch(`/api/transactions?page=1&pageSize=1`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    })
-    // Use api client instead
-    const { api } = await import('../api/client.js')
-    const allData = await api.get(`/transactions?pageSize=9999`)
-    const txn = allData.list.find(t => t.id === Number(route.params.id))
-    if (txn) {
-      form.value = {
-        type: txn.type,
-        amount: txn.amount,
-        currency: txn.currency,
-        exchange_rate: txn.exchange_rate,
-        category_id: txn.category_id,
-        date: txn.date,
-        note: txn.note || ''
-      }
+    const txn = await api.get(`/transactions/${route.params.id}`)
+    form.value = {
+      type: txn.type,
+      amount: txn.amount,
+      currency: txn.currency,
+      category_id: txn.category_id,
+      date: txn.date,
+      note: txn.note || ''
     }
   } catch (e) {
     errorMsg.value = '加载失败: ' + e.message
   }
+}
+
+function handleCategoryCreated(category) {
+  form.value.category_id = category.id
+  form.value.type = category.type
 }
 
 async function handleSubmit() {

@@ -16,6 +16,7 @@ import { registerRecurringRoutes } from './modules/recurring/routes.js'
 import { registerReportRoutes } from './modules/reports/routes.js'
 import { registerSettingsRoutes } from './modules/settings/routes.js'
 import { registerDataRoutes } from './modules/data/routes.js'
+import { initUsedCurrenciesCache } from './modules/settings/service.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const DIST_DIR = resolve(__dirname, '../../web/dist')
@@ -52,6 +53,7 @@ registerSettingsRoutes(router)
 registerDataRoutes(router)
 
 getDb()
+initUsedCurrenciesCache()
 
 const scheduler = new Scheduler()
 scheduler.start()

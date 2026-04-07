@@ -1,6 +1,8 @@
 import { getDb } from '../../db/init.js'
 import { CURRENCIES } from '../../db/schema.js'
-import { CATEGORY_ICONS } from '../../constants/icons.js'
+import { CATEGORY_ICON_GROUPS } from '../../constants/icons.js'
+
+let usedCurrencyCodes = null
 
 export function getSettings() {
   const db = getDb()
@@ -36,6 +38,40 @@ export function getCurrencies() {
   return CURRENCIES
 }
 
+export function initUsedCurrenciesCache() {
+  refreshUsedCurrenciesCache()
+}
+
+export function refreshUsedCurrenciesCache() {
+  const db = getDb()
+  usedCurrencyCodes = db
+    .prepare(
+      `SELECT currency
+       FROM transactions
+       WHERE is_deleted = 0 AND currency IS NOT NULL AND trim(currency) != ''
+       GROUP BY currency
+       ORDER BY MAX(date) DESC, MAX(id) DESC, currency ASC`
+    )
+    .all()
+    .map(row => row.currency)
+
+  return usedCurrencyCodes
+}
+
+export function getUsedCurrencies() {
+  if (!usedCurrencyCodes) {
+    refreshUsedCurrenciesCache()
+  }
+
+  const currencyMap = new Map(
+    CURRENCIES.map(currency => [currency.code, currency])
+  )
+  return usedCurrencyCodes.map(code => {
+    const currency = currencyMap.get(code)
+    return currency || { code, name: code, symbol: code }
+  })
+}
+
 export function getCategoryIcons() {
-  return CATEGORY_ICONS
+  return CATEGORY_ICON_GROUPS
 }

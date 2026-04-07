@@ -27,9 +27,7 @@
       <CurrencyInput
         v-model="form.amount"
         :currency="form.currency"
-        :exchange-rate="form.exchange_rate"
         @update:currency="form.currency = $event"
-        @update:exchange-rate="form.exchange_rate = $event"
       />
 
       <div>
@@ -199,7 +197,6 @@ const form = ref({
   type: 'expense',
   amount: null,
   currency: settingsStore.settings.default_currency,
-  exchange_rate: 1,
   category_id: null,
   frequency: 'monthly',
   day_of_week: null,
@@ -225,7 +222,6 @@ async function loadRule() {
         type: rule.type,
         amount: rule.amount,
         currency: rule.currency,
-        exchange_rate: rule.exchange_rate,
         category_id: rule.category_id,
         frequency: rule.frequency,
         day_of_week: rule.day_of_week,

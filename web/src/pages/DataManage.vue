@@ -21,14 +21,20 @@
     <!-- Import -->
     <div class="card space-y-3">
       <h2 class="font-bold">导入数据</h2>
-      <p class="text-sm text-on-surface-secondary">
-        从 JSON 文件导入数据。合并模式下，同名同类型分类将复用，交易数据将追加。
-      </p>
+      <div class="space-y-2 text-sm text-on-surface-secondary">
+        <p>
+          合并：保留当前数据，只补充导入文件里的内容。分类会按“名称 + 类型 +
+          父级”复用；新增记录遇到 ID 冲突时会自动重新分配，不会覆盖现有数据。
+        </p>
+        <p>
+          覆盖：先清空当前分类、账目、周期规则和设置，再按导入文件完整恢复。适合整本账本迁移，执行前请先导出备份。
+        </p>
+      </div>
       <div>
         <label class="label">导入模式</label>
         <select v-model="importMode" class="select w-full sm:w-40">
           <option value="merge">合并（推荐）</option>
-          <option value="append">全部追加</option>
+          <option value="overwrite">覆盖当前数据</option>
         </select>
       </div>
       <div>
@@ -91,7 +97,11 @@
     <ConfirmDialog
       :show="showImportConfirm"
       title="确认导入"
-      :message="`确定要导入文件「${pendingFile?.name}」吗？模式：${importMode === 'merge' ? '合并' : '全部追加'}。此操作可能会修改现有数据。`"
+      :message="
+        importMode === 'merge'
+          ? `确定以“合并”模式导入「${pendingFile?.name}」吗？当前数据会保留，新增记录会自动避开重复 ID。`
+          : `确定以“覆盖”模式导入「${pendingFile?.name}」吗？当前分类、账目、周期规则和设置会被清空并替换，此操作不可撤销。`
+      "
       confirm-text="确认导入"
       @confirm="confirmImport"
       @cancel="cancelImport"
@@ -103,7 +113,9 @@
 import { ref } from 'vue'
 import { api } from '../api/client.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import { useSettingsStore } from '../stores/settings.js'
 
+const settingsStore = useSettingsStore()
 const importMode = ref('merge')
 const importing = ref(false)
 const importResult = ref(null)
@@ -167,7 +179,8 @@ async function confirmImport() {
       `/data/import?mode=${importMode.value}`,
       data
     )
-    msg.value = '导入完成'
+    await settingsStore.fetch()
+    msg.value = importMode.value === 'merge' ? '合并导入完成' : '覆盖导入完成'
     msgIsErr.value = false
   } catch (e) {
     msg.value = '导入失败: ' + e.message

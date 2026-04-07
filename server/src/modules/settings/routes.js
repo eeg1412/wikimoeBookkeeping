@@ -22,6 +22,10 @@ export function registerSettingsRoutes(router) {
     json(res, service.getCurrencies())
   })
 
+  router.get('/api/currencies/used', (req, res) => {
+    json(res, service.getUsedCurrencies())
+  })
+
   router.get('/api/icons', (req, res) => {
     json(res, service.getCategoryIcons())
   })

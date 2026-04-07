@@ -9,10 +9,25 @@
 
     <!-- Filters -->
     <div class="card">
-      <div class="flex flex-wrap gap-2">
+      <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <select
+          v-model="filterCurrency"
+          class="select min-w-0 w-full text-sm sm:w-32"
+          :disabled="!usedCurrencies.length"
+          @change="applyFilter"
+        >
+          <option v-if="!usedCurrencies.length" value="">暂无币种</option>
+          <option
+            v-for="currency in usedCurrencies"
+            :key="currency.code"
+            :value="currency.code"
+          >
+            {{ currency.symbol }} {{ currency.code }}
+          </option>
+        </select>
         <select
           v-model="filterType"
-          class="select text-sm w-24"
+          class="select min-w-0 w-full text-sm sm:w-24"
           @change="applyFilter"
         >
           <option value="">全部</option>
@@ -22,17 +37,24 @@
         <input
           v-model="filterDateFrom"
           type="date"
-          class="input text-sm w-36"
+          class="input min-w-0 w-full text-sm sm:w-36"
           @change="applyFilter"
         />
-        <span class="text-on-surface-secondary self-center">至</span>
+        <span
+          class="hidden self-center text-on-surface-secondary sm:inline-flex"
+          >至</span
+        >
         <input
           v-model="filterDateTo"
           type="date"
-          class="input text-sm w-36"
+          class="input min-w-0 w-full text-sm sm:w-36"
           @change="applyFilter"
         />
-        <button v-if="hasFilter" class="btn-ghost btn-sm" @click="clearFilter">
+        <button
+          v-if="hasFilter"
+          class="btn-ghost btn-sm col-span-2 sm:col-span-1"
+          @click="clearFilter"
+        >
           清除
         </button>
       </div>
@@ -58,8 +80,10 @@
         >
           {{ date }}
           <span class="ml-2">
-            收入 {{ settingsStore.formatMoney(group.income) }} 支出
-            {{ settingsStore.formatMoney(group.expense) }}
+            收入
+            {{ settingsStore.formatMoney(group.income, activeCurrencyCode) }}
+            支出
+            {{ settingsStore.formatMoney(group.expense, activeCurrencyCode) }}
           </span>
         </div>
         <div class="card divide-y divide-border !p-0 overflow-hidden">
@@ -69,9 +93,16 @@
             class="flex items-center gap-3 px-4 py-3 hover:bg-surface-secondary/50 transition-colors cursor-pointer"
             @click="$router.push(`/transactions/${txn.id}/edit`)"
           >
-            <AppIcon :name="txn.category_icon || 'folder'" :size="24" />
+            <AppIcon
+              :name="txn.category_icon || DEFAULT_CATEGORY_ICON"
+              :size="24"
+              :style="getTransactionCategoryStyle(txn)"
+            />
             <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium text-on-surface truncate">
+              <div
+                class="text-sm font-medium truncate"
+                :style="getTransactionCategoryStyle(txn)"
+              >
                 {{
                   txn.parent_category_name
                     ? txn.parent_category_name + ' / '
@@ -102,15 +133,6 @@
               >
                 {{ txn.type === 'income' ? '+' : '-'
                 }}{{ settingsStore.formatMoney(txn.amount, txn.currency) }}
-              </div>
-              <div
-                v-if="
-                  txn.currency !== settingsStore.settings.default_currency &&
-                  txn.exchange_rate !== 1
-                "
-                class="text-[10px] text-on-surface-secondary"
-              >
-                ≈ {{ settingsStore.formatMoney(txn.converted_amount) }}
               </div>
             </div>
             <button
@@ -162,11 +184,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { DEFAULT_CATEGORY_ICON } from '@shared/icon-names.js'
 import { useTransactionsStore } from '../stores/transactions.js'
 import { useSettingsStore } from '../stores/settings.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AppIcon from '../components/AppIcon.vue'
+import { getCategoryAccentColor } from '../utils/category-ui.js'
 
 const store = useTransactionsStore()
 const settingsStore = useSettingsStore()
@@ -193,9 +217,19 @@ function cancelDelete() {
   pendingDeleteId.value = null
 }
 
+function getTransactionCategoryStyle(transaction) {
+  const color = getCategoryAccentColor(transaction)
+  return color ? { color } : undefined
+}
+
 const filterType = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
+const filterCurrency = ref('')
+const usedCurrencies = computed(() => settingsStore.usedCurrencies)
+const activeCurrencyCode = computed(
+  () => filterCurrency.value || settingsStore.settings.default_currency
+)
 
 const hasFilter = computed(
   () => filterType.value || filterDateFrom.value || filterDateTo.value
@@ -208,14 +242,15 @@ const groupedList = computed(() => {
       groups[txn.date] = { items: [], income: 0, expense: 0 }
     }
     groups[txn.date].items.push(txn)
-    if (txn.type === 'income') groups[txn.date].income += txn.converted_amount
-    else groups[txn.date].expense += txn.converted_amount
+    if (txn.type === 'income') groups[txn.date].income += txn.amount
+    else groups[txn.date].expense += txn.amount
   }
   return groups
 })
 
 function applyFilter() {
   store.setFilters({
+    currency: filterCurrency.value || undefined,
     type: filterType.value || undefined,
     date_from: filterDateFrom.value || undefined,
     date_to: filterDateTo.value || undefined
@@ -235,5 +270,23 @@ function changePage(p) {
   store.fetch()
 }
 
-onMounted(() => store.fetch())
+watch(
+  usedCurrencies,
+  list => {
+    if (!list.length) {
+      filterCurrency.value = ''
+      applyFilter()
+      return
+    }
+
+    const nextCurrency = list[0].code
+
+    if (!list.some(item => item.code === filterCurrency.value)) {
+      filterCurrency.value = nextCurrency
+    }
+
+    applyFilter()
+  },
+  { immediate: true }
+)
 </script>

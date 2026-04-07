@@ -1,8 +1,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '../api/client.js'
+import { useSettingsStore } from './settings.js'
 
 export const useTransactionsStore = defineStore('transactions', () => {
+  const settingsStore = useSettingsStore()
   const list = ref([])
   const total = ref(0)
   const page = ref(1)
@@ -35,19 +37,19 @@ export const useTransactionsStore = defineStore('transactions', () => {
 
   async function create(data) {
     const result = await api.post('/transactions', data)
-    await fetch()
+    await Promise.all([fetch(), settingsStore.fetchUsedCurrencies()])
     return result
   }
 
   async function update(id, data) {
     const result = await api.put(`/transactions/${id}`, data)
-    await fetch()
+    await Promise.all([fetch(), settingsStore.fetchUsedCurrencies()])
     return result
   }
 
   async function remove(id) {
     await api.delete(`/transactions/${id}`)
-    await fetch()
+    await Promise.all([fetch(), settingsStore.fetchUsedCurrencies()])
   }
 
   function setFilters(f) {

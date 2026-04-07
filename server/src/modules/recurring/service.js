@@ -5,9 +5,11 @@ export function listRules() {
   const db = getDb()
   return db
     .prepare(
-      `SELECT r.*, c.name as category_name, c.icon as category_icon
+      `SELECT r.*, c.name as category_name, c.icon as category_icon,
+              COALESCE(CASE WHEN c.parent_id IS NULL THEN c.color ELSE pc.color END, c.color) as category_color
        FROM recurring_rules r
        LEFT JOIN categories c ON r.category_id = c.id
+       LEFT JOIN categories pc ON c.parent_id = pc.id
        WHERE r.is_deleted = 0
        ORDER BY r.created_at DESC`
     )
@@ -18,9 +20,11 @@ export function getRule(id) {
   const db = getDb()
   return db
     .prepare(
-      `SELECT r.*, c.name as category_name, c.icon as category_icon
+      `SELECT r.*, c.name as category_name, c.icon as category_icon,
+              COALESCE(CASE WHEN c.parent_id IS NULL THEN c.color ELSE pc.color END, c.color) as category_color
        FROM recurring_rules r
        LEFT JOIN categories c ON r.category_id = c.id
+       LEFT JOIN categories pc ON c.parent_id = pc.id
        WHERE r.id = ? AND r.is_deleted = 0`
     )
     .get(id)
@@ -31,7 +35,6 @@ export function createRule({
   type,
   amount,
   currency,
-  exchange_rate,
   category_id,
   note,
   frequency,
@@ -54,17 +57,16 @@ export function createRule({
   const result = db
     .prepare(
       `INSERT INTO recurring_rules
-       (name, type, amount, currency, exchange_rate, category_id, note,
+       (name, type, amount, currency, category_id, note,
         frequency, day_of_week, day_of_month, month_of_year, hour, minute,
         timezone, start_date, end_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       name,
       type,
       amount,
       currency || 'CNY',
-      exchange_rate || 1,
       category_id,
       note || '',
       frequency,
@@ -88,7 +90,7 @@ export function updateRule(id, data) {
 
   db.prepare(
     `UPDATE recurring_rules SET
-     name=?, type=?, amount=?, currency=?, exchange_rate=?, category_id=?, note=?,
+     name=?, type=?, amount=?, currency=?, category_id=?, note=?,
      frequency=?, day_of_week=?, day_of_month=?, month_of_year=?, hour=?, minute=?,
      timezone=?, start_date=?, end_date=?, is_active=?, updated_at=datetime('now')
      WHERE id=?`
@@ -97,7 +99,6 @@ export function updateRule(id, data) {
     data.type ?? rule.type,
     data.amount ?? rule.amount,
     data.currency ?? rule.currency,
-    data.exchange_rate ?? rule.exchange_rate,
     data.category_id ?? rule.category_id,
     data.note ?? rule.note,
     data.frequency ?? rule.frequency,
@@ -158,7 +159,6 @@ export function executeRule(rule, scheduledDate) {
       type: rule.type,
       amount: rule.amount,
       currency: rule.currency,
-      exchange_rate: rule.exchange_rate,
       category_id: rule.category_id,
       note: `[周期] ${rule.name}${rule.note ? ' - ' + rule.note : ''}`,
       date: scheduledDate,

@@ -1,4 +1,5 @@
 import { getDb } from '../../db/init.js'
+import { refreshUsedCurrenciesCache } from '../settings/service.js'
 
 export function listTransactions({
   page = 1,
@@ -46,7 +47,8 @@ export function listTransactions({
   const list = db
     .prepare(
       `SELECT t.*, c.name as category_name, c.icon as category_icon,
-              pc.name as parent_category_name, pc.icon as parent_category_icon
+              pc.name as parent_category_name, pc.icon as parent_category_icon,
+              COALESCE(CASE WHEN c.parent_id IS NULL THEN c.color ELSE pc.color END, c.color) as category_color
        FROM transactions t
        LEFT JOIN categories c ON t.category_id = c.id
        LEFT JOIN categories pc ON c.parent_id = pc.id
@@ -64,7 +66,8 @@ export function getTransaction(id) {
   return db
     .prepare(
       `SELECT t.*, c.name as category_name, c.icon as category_icon,
-              pc.name as parent_category_name, pc.icon as parent_category_icon
+              pc.name as parent_category_name, pc.icon as parent_category_icon,
+              COALESCE(CASE WHEN c.parent_id IS NULL THEN c.color ELSE pc.color END, c.color) as category_color
        FROM transactions t
        LEFT JOIN categories c ON t.category_id = c.id
        LEFT JOIN categories pc ON c.parent_id = pc.id
@@ -77,7 +80,6 @@ export function createTransaction({
   type,
   amount,
   currency,
-  exchange_rate,
   category_id,
   note,
   date,
@@ -89,57 +91,70 @@ export function createTransaction({
     .prepare('SELECT * FROM categories WHERE id = ? AND is_deleted = 0')
     .get(category_id)
   if (!cat) throw new Error('分类不存在')
-
-  const rate = exchange_rate || 1
-  const converted_amount = Math.round(amount * rate * 100) / 100
+  if (cat.type !== type) throw new Error('分类类型与账目类型不一致')
 
   const result = db
     .prepare(
-      `INSERT INTO transactions (type, amount, currency, exchange_rate, converted_amount, category_id, note, source, date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO transactions (type, amount, currency, category_id, note, source, date)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       type,
       amount,
       currency || 'CNY',
-      rate,
-      converted_amount,
       category_id,
       note || '',
       source || 'manual',
       date
     )
 
+  refreshUsedCurrenciesCache()
+
   return getTransaction(Number(result.lastInsertRowid))
 }
 
 export function updateTransaction(
   id,
-  { type, amount, currency, exchange_rate, category_id, note, date }
+  { type, amount, currency, category_id, note, date }
 ) {
   const db = getDb()
   const txn = getTransaction(id)
   if (!txn) throw new Error('账目不存在')
 
+  const nextType = type ?? txn.type
+  if (nextType !== txn.type) {
+    throw new Error('编辑账目时不能切换收入和支出类型')
+  }
+
+  const nextCategoryId = category_id ?? txn.category_id
+  const nextCategory = db
+    .prepare('SELECT * FROM categories WHERE id = ? AND is_deleted = 0')
+    .get(nextCategoryId)
+
+  if (!nextCategory) {
+    throw new Error('分类不存在')
+  }
+
+  if (nextCategory.type !== nextType) {
+    throw new Error('分类类型与账目类型不一致')
+  }
+
   const newAmount = amount ?? txn.amount
-  const newRate = exchange_rate ?? txn.exchange_rate
-  const converted_amount = Math.round(newAmount * newRate * 100) / 100
 
   db.prepare(
-    `UPDATE transactions SET type=?, amount=?, currency=?, exchange_rate=?,
-     converted_amount=?, category_id=?, note=?, date=?, updated_at=datetime('now')
+    `UPDATE transactions SET type=?, amount=?, currency=?, category_id=?, note=?, date=?, updated_at=datetime('now')
      WHERE id = ?`
   ).run(
-    type ?? txn.type,
+    nextType,
     newAmount,
     currency ?? txn.currency,
-    newRate,
-    converted_amount,
-    category_id ?? txn.category_id,
+    nextCategoryId,
     note ?? txn.note,
     date ?? txn.date,
     id
   )
+
+  refreshUsedCurrenciesCache()
 
   return getTransaction(id)
 }
@@ -152,4 +167,6 @@ export function deleteTransaction(id) {
   db.prepare(
     "UPDATE transactions SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?"
   ).run(id)
+
+  refreshUsedCurrenciesCache()
 }

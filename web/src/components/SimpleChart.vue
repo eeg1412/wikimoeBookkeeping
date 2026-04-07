@@ -68,18 +68,20 @@
     <!-- Bar chart -->
     <div v-else-if="type === 'bar'" class="overflow-x-auto pb-1">
       <div :style="{ minWidth: barMinWidth + 'px' }">
-        <div class="flex items-end gap-2" :style="{ height: height + 'px' }">
+        <div class="flex items-end gap-3" :style="{ height: height + 'px' }">
           <div
             v-for="(group, i) in barGroups"
             :key="i"
-            class="flex-1 flex flex-col items-center gap-1 h-full justify-end min-w-0"
+            class="flex h-full shrink-0 flex-col items-center justify-end gap-1"
+            :style="{ width: barGroupWidth + 'px' }"
           >
-            <div class="flex items-end gap-1 w-full h-full justify-center">
+            <div class="flex h-full w-full items-end justify-center gap-1.5">
               <div
                 v-for="(bar, j) in group.series"
                 :key="j"
-                class="rounded-t transition-all duration-300 min-h-[2px] flex-1 max-w-5"
+                class="min-h-[2px] flex-1 rounded-t transition-all duration-300"
                 :style="{
+                  maxWidth: barWidth + 'px',
                   height: bar.percentage + '%',
                   backgroundColor: bar.color
                 }"
@@ -88,13 +90,18 @@
             </div>
           </div>
         </div>
-        <div class="mt-3 flex items-start gap-2">
-          <div v-for="(group, i) in barGroups" :key="i" class="flex-1 min-w-0">
-            <div :class="isDenseBarChart ? 'h-14' : ''">
+        <div class="mt-3 flex items-start gap-3">
+          <div
+            v-for="(group, i) in barGroups"
+            :key="i"
+            class="shrink-0"
+            :style="{ width: barGroupWidth + 'px' }"
+          >
+            <div :style="{ height: barLabelHeight + 'px' }">
               <span
                 class="block whitespace-nowrap text-[10px] font-medium text-on-surface"
                 :class="
-                  isDenseBarChart
+                  shouldTiltBarLabels
                     ? 'origin-top-left rotate-45 translate-x-2 text-left'
                     : 'truncate text-center'
                 "
@@ -142,6 +149,13 @@ const props = defineProps({
 const center = computed(() => props.size / 2)
 const radius = computed(() => (props.size - props.stroke) / 2)
 const circumference = computed(() => 2 * Math.PI * radius.value)
+const segmentGap = computed(() => {
+  if (props.data.length <= 1) {
+    return 0
+  }
+
+  return Math.min(Math.max(props.stroke * 0.28, 3), 7)
+})
 
 const segments = computed(() => {
   const total = props.data.reduce((s, d) => s + (d.value || 0), 0)
@@ -149,13 +163,14 @@ const segments = computed(() => {
   let offset = 0
   return props.data.map((d, i) => {
     const pct = d.value / total
-    const length = pct * circumference.value
+    const rawLength = pct * circumference.value
+    const length = Math.max(rawLength - segmentGap.value, 0)
     const seg = {
       length,
       offset,
       color: d.color || props.colors[i % props.colors.length]
     }
-    offset += length
+    offset += rawLength
     return seg
   })
 })
@@ -208,9 +223,19 @@ const barGroups = computed(() => {
   }))
 })
 
-const isDenseBarChart = computed(() => barGroups.value.length > 12)
-
-const barMinWidth = computed(() =>
-  Math.max(barGroups.value.length * (isDenseBarChart.value ? 52 : 28), 240)
+const shouldTiltBarLabels = computed(
+  () =>
+    barGroups.value.length > 1 &&
+    barGroups.value.some(group => String(group.label || '').length > 4)
 )
+
+const barLabelHeight = computed(() => (shouldTiltBarLabels.value ? 52 : 20))
+
+const barGroupWidth = computed(() => 44)
+
+const barWidth = computed(() =>
+  barGroups.value.some(group => group.series.length > 1) ? 14 : 20
+)
+
+const barMinWidth = computed(() => Math.max(barGroups.value.length * 56, 240))
 </script>

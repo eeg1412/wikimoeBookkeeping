@@ -7,7 +7,7 @@
         <div class="flex justify-center mb-3 text-primary">
           <AppIcon name="brand" :size="48" />
         </div>
-        <h1 class="text-2xl font-bold text-on-surface">记账本</h1>
+        <h1 class="text-2xl font-bold text-on-surface">维基萌记账本</h1>
         <p class="text-sm text-on-surface-secondary mt-1">个人财务管理</p>
       </div>
       <form @submit.prevent="handleLogin" class="card space-y-4">

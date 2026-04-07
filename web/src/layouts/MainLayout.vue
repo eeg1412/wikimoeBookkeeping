@@ -6,7 +6,7 @@
     >
       <div class="flex h-14 items-center gap-2 px-5 border-b border-border">
         <AppIcon name="brand" :size="22" class="text-primary" />
-        <span class="font-bold text-lg text-on-surface">记账本</span>
+        <span class="font-bold text-lg text-on-surface">维基萌记账本</span>
       </div>
       <nav class="flex-1 overflow-y-auto py-3 px-3 space-y-1">
         <router-link
@@ -49,7 +49,9 @@
     >
       <div class="flex items-center gap-2">
         <AppIcon name="brand" :size="20" class="text-primary" />
-        <span class="font-bold text-on-surface">记账本</span>
+        <span class="max-w-[11rem] truncate font-bold text-on-surface"
+          >维基萌记账本</span
+        >
       </div>
       <button
         @click="moreOpen = !moreOpen"

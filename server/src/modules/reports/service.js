@@ -1,45 +1,17 @@
 import { getDb } from '../../db/init.js'
 
-export function getSummary({ period, date, currency_mode = 'default' }) {
+export function getSummary({ period, date, currency }) {
   const db = getDb()
   const { start, end } = getDateRange(period, date)
 
-  if (currency_mode === 'original') {
-    const income = db
-      .prepare(
-        `SELECT currency, SUM(amount) as total, COUNT(*) as count
-         FROM transactions WHERE type='income' AND date>=? AND date<=? AND is_deleted=0
-         GROUP BY currency`
-      )
-      .all(start, end)
-    const expense = db
-      .prepare(
-        `SELECT currency, SUM(amount) as total, COUNT(*) as count
-         FROM transactions WHERE type='expense' AND date>=? AND date<=? AND is_deleted=0
-         GROUP BY currency`
-      )
-      .all(start, end)
-    return { period, start, end, currency_mode, income, expense }
-  }
-
-  const income = db
-    .prepare(
-      `SELECT SUM(converted_amount) as total, COUNT(*) as count
-       FROM transactions WHERE type='income' AND date>=? AND date<=? AND is_deleted=0`
-    )
-    .get(start, end)
-  const expense = db
-    .prepare(
-      `SELECT SUM(converted_amount) as total, COUNT(*) as count
-       FROM transactions WHERE type='expense' AND date>=? AND date<=? AND is_deleted=0`
-    )
-    .get(start, end)
+  const income = getTypeSummary(db, 'income', start, end, currency)
+  const expense = getTypeSummary(db, 'expense', start, end, currency)
 
   return {
     period,
     start,
     end,
-    currency_mode,
+    currency: currency || null,
     income: income.total || 0,
     expense: expense.total || 0,
     net: (income.total || 0) - (expense.total || 0),
@@ -48,49 +20,44 @@ export function getSummary({ period, date, currency_mode = 'default' }) {
   }
 }
 
-export function getTrend({
-  period,
-  start_date,
-  end_date,
-  type,
-  currency_mode = 'default'
-}) {
+export function getTrend({ period, start_date, end_date, type, currency }) {
   const db = getDb()
   const buckets = getTimeBuckets(period, start_date, end_date)
 
   return buckets.map(({ start, end, label }) => {
-    if (currency_mode === 'original') {
-      const data = db
-        .prepare(
-          `SELECT currency, type, SUM(amount) as total
-           FROM transactions WHERE date>=? AND date<=? AND is_deleted=0
-           ${type ? 'AND type=?' : ''}
-           GROUP BY currency, type`
-        )
-        .all(...(type ? [start, end, type] : [start, end]))
-      return { label, start, end, data }
+    const params = [start, end]
+    const where = ['date>=?', 'date<=?', 'is_deleted=0']
+
+    if (type) {
+      where.push('type=?')
+      params.push(type)
     }
 
-    const inc = db
+    if (currency) {
+      where.push('currency=?')
+      params.push(currency)
+    }
+
+    const totals = db
       .prepare(
-        `SELECT COALESCE(SUM(converted_amount),0) as total FROM transactions
-         WHERE type='income' AND date>=? AND date<=? AND is_deleted=0`
+        `SELECT type, COALESCE(SUM(amount), 0) as total
+         FROM transactions
+         WHERE ${where.join(' AND ')}
+         GROUP BY type`
       )
-      .get(start, end)
-    const exp = db
-      .prepare(
-        `SELECT COALESCE(SUM(converted_amount),0) as total FROM transactions
-         WHERE type='expense' AND date>=? AND date<=? AND is_deleted=0`
-      )
-      .get(start, end)
+      .all(...params)
+
+    const income = totals.find(item => item.type === 'income')?.total || 0
+    const expense = totals.find(item => item.type === 'expense')?.total || 0
 
     return {
       label,
       start,
       end,
-      income: inc.total,
-      expense: exp.total,
-      net: inc.total - exp.total
+      currency: currency || null,
+      income,
+      expense,
+      net: income - expense
     }
   })
 }
@@ -99,29 +66,31 @@ export function getCategoryReport({
   period,
   date,
   type = 'expense',
-  currency_mode = 'default'
+  currency
 }) {
   const db = getDb()
   const { start, end } = getDateRange(period, date)
-  const amountField =
-    currency_mode === 'original' ? 'amount' : 'converted_amount'
-  const extraGroup = currency_mode === 'original' ? 't.currency,' : ''
-  const extraSelect = currency_mode === 'original' ? 't.currency,' : ''
+  const params = [type, start, end]
+  const currencyClause = currency ? 'AND t.currency = ?' : ''
+
+  if (currency) {
+    params.push(currency)
+  }
 
   const data = db
     .prepare(
       `SELECT c.id, c.name, c.icon, c.parent_id,
+              COALESCE(CASE WHEN c.parent_id IS NULL THEN c.color ELSE pc.color END, c.color) as color,
               pc.name as parent_name, pc.icon as parent_icon,
-              ${extraSelect}
-              SUM(t.${amountField}) as total, COUNT(*) as count
+              SUM(t.amount) as total, COUNT(*) as count
        FROM transactions t
        JOIN categories c ON t.category_id = c.id
        LEFT JOIN categories pc ON c.parent_id = pc.id
-       WHERE t.type=? AND t.date>=? AND t.date<=? AND t.is_deleted=0
-       GROUP BY ${extraGroup} c.id
+       WHERE t.type=? AND t.date>=? AND t.date<=? AND t.is_deleted=0 ${currencyClause}
+       GROUP BY c.id
        ORDER BY total DESC`
     )
-    .all(type, start, end)
+    .all(...params)
 
   const grandTotal = data.reduce((s, r) => s + r.total, 0)
 
@@ -130,7 +99,7 @@ export function getCategoryReport({
     start,
     end,
     type,
-    currency_mode,
+    currency: currency || null,
     categories: data.map(r => ({
       ...r,
       percentage:
@@ -138,6 +107,22 @@ export function getCategoryReport({
     })),
     total: grandTotal
   }
+}
+
+function getTypeSummary(db, type, start, end, currency) {
+  const params = [start, end]
+  const currencyClause = currency ? 'AND currency = ?' : ''
+  if (currency) {
+    params.push(currency)
+  }
+
+  return db
+    .prepare(
+      `SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+       FROM transactions
+       WHERE type=? AND date>=? AND date<=? AND is_deleted=0 ${currencyClause}`
+    )
+    .get(type, ...params)
 }
 
 function getDateRange(period, dateStr) {

@@ -7,7 +7,6 @@
       </button>
     </div>
 
-    <!-- Type tabs -->
     <div class="flex gap-2">
       <button
         class="btn-sm flex-1"
@@ -25,16 +24,15 @@
       </button>
     </div>
 
-    <!-- Category tree -->
     <div
       v-if="store.loading"
-      class="text-center py-12 text-on-surface-secondary"
+      class="py-12 text-center text-on-surface-secondary"
     >
       加载中...
     </div>
     <div
       v-else-if="!filteredTree.length"
-      class="text-center py-12 text-on-surface-secondary"
+      class="py-12 text-center text-on-surface-secondary"
     >
       暂无分类
     </div>
@@ -45,12 +43,15 @@
         class="card !p-0 overflow-hidden"
       >
         <div
-          class="flex flex-wrap items-center gap-2 px-4 py-3 bg-surface-secondary/50 sm:gap-3"
+          class="flex flex-wrap items-center gap-2 bg-surface-secondary/50 px-4 py-3 sm:gap-3"
         >
-          <AppIcon :name="parent.icon" :size="22" />
-          <span class="font-medium flex-1 min-w-0 truncate">{{
-            parent.name
-          }}</span>
+          <div
+            class="flex min-w-0 flex-1 items-center gap-3"
+            :style="{ color: parent.color }"
+          >
+            <AppIcon :name="parent.icon" :size="24" />
+            <span class="truncate font-medium">{{ parent.name }}</span>
+          </div>
           <button class="btn-ghost btn-sm text-xs" @click="openCreate(parent)">
             + 子类
           </button>
@@ -70,10 +71,13 @@
             :key="child.id"
             class="flex flex-wrap items-center gap-2 px-4 py-2.5 pl-10 sm:gap-3"
           >
-            <AppIcon :name="child.icon" :size="20" />
-            <span class="text-sm flex-1 min-w-0 truncate">{{
-              child.name
-            }}</span>
+            <div
+              class="flex min-w-0 flex-1 items-center gap-3"
+              :style="{ color: child.effective_color }"
+            >
+              <AppIcon :name="child.icon" :size="22" />
+              <span class="truncate text-sm">{{ child.name }}</span>
+            </div>
             <button class="btn-ghost btn-sm text-xs" @click="openEdit(child)">
               编辑
             </button>
@@ -88,70 +92,131 @@
       </div>
     </div>
 
-    <!-- Edit/Create Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showForm"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
-          @click.self="showForm = false"
-        >
+    <AppModal
+      :show="showForm"
+      :title="formTitle"
+      max-width="4xl"
+      @close="showForm = false"
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="label">名称</label>
+          <input
+            v-model="formName"
+            class="input"
+            :class="formFieldErrors.name ? '!border-red-500' : ''"
+            placeholder="分类名称"
+            maxlength="20"
+            @input="clearFormFieldError('name')"
+          />
+          <p v-if="formFieldErrors.name" class="mt-1 text-sm text-red-500">
+            {{ formFieldErrors.name }}
+          </p>
+        </div>
+
+        <div>
+          <label class="label">图标</label>
           <div
-            class="bg-surface rounded-2xl shadow-xl w-full max-w-sm p-6 border border-border space-y-4"
+            class="space-y-3 overflow-x-hidden rounded-2xl border border-border bg-surface-secondary/40 p-3"
           >
-            <h3 class="text-lg font-bold">
-              {{
-                editingCat
-                  ? '编辑分类'
-                  : createParent
-                    ? '新增子分类'
-                    : '新增大类'
-              }}
-            </h3>
-            <div>
-              <label class="label">名称</label>
-              <input
-                v-model="formName"
-                class="input"
-                placeholder="分类名称"
-                maxlength="20"
-              />
-            </div>
-            <div>
-              <label class="label">图标</label>
-              <div class="grid grid-cols-8 gap-1.5 max-h-32 overflow-y-auto">
-                <button
-                  v-for="icon in icons"
-                  :key="icon"
-                  class="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                  :class="
-                    formIcon === icon
-                      ? 'bg-primary/20 ring-2 ring-primary'
-                      : 'hover:bg-surface-secondary'
-                  "
-                  @click="formIcon = icon"
-                >
-                  <AppIcon :name="icon" :size="18" />
-                </button>
+            <div
+              class="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2"
+            >
+              <div
+                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border bg-surface"
+                :style="{
+                  color: previewAccentColor
+                }"
+              >
+                <AppIcon :name="formIcon" :size="26" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-on-surface">已选图标</p>
+                <p class="text-xs text-on-surface-secondary">
+                  {{ selectedIconLabel }}
+                </p>
               </div>
             </div>
-            <p v-if="formError" class="text-sm text-red-500">{{ formError }}</p>
-            <div class="flex gap-3 justify-end">
-              <button class="btn-secondary btn-sm" @click="showForm = false">
-                取消
-              </button>
-              <button
-                class="btn-primary btn-sm"
-                @click="handleSave"
-                :disabled="formSaving"
+
+            <div class="space-y-4 overflow-x-hidden">
+              <section
+                v-for="group in iconGroups"
+                :key="group.id"
+                class="space-y-2"
               >
-                {{ formSaving ? '保存中...' : '保存' }}
-              </button>
+                <div
+                  class="sticky top-0 z-10 bg-surface-secondary/95 px-2 py-1 text-xs font-semibold tracking-wide text-on-surface-secondary backdrop-blur"
+                >
+                  {{ group.label }}
+                </div>
+                <div
+                  class="grid grid-cols-4 gap-2 p-1 sm:grid-cols-5 lg:grid-cols-6"
+                >
+                  <button
+                    v-for="icon in group.icons"
+                    :key="icon.name"
+                    type="button"
+                    class="flex aspect-square min-w-0 flex-col items-center justify-center rounded-xl border border-transparent bg-surface px-1 text-on-surface-secondary transition-all"
+                    :class="
+                      formIcon === icon.name
+                        ? 'font-semibold'
+                        : 'hover:border-border hover:bg-surface-secondary'
+                    "
+                    :style="getIconOptionStyle(formIcon === icon.name)"
+                    :title="icon.label"
+                    @click="formIcon = icon.name"
+                  >
+                    <AppIcon :name="icon.name" :size="22" />
+                    <span
+                      class="mt-1 w-full truncate text-center text-[10px] leading-tight"
+                    >
+                      {{ icon.label }}
+                    </span>
+                  </button>
+                </div>
+              </section>
             </div>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+
+        <div v-if="isParentForm">
+          <label class="label">分类颜色</label>
+          <ColorPicker v-model="formColor" />
+        </div>
+        <div
+          v-else
+          class="rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3 text-sm text-on-surface-secondary"
+        >
+          <div class="flex items-center gap-3">
+            <span
+              class="h-3.5 w-3.5 shrink-0 rounded-full border border-white/70 shadow-sm"
+              :style="{ backgroundColor: inheritedColor }"
+            ></span>
+            <span>子分类沿用大类分类颜色，当前为 {{ inheritedColor }}。</span>
+          </div>
+        </div>
+
+        <div
+          v-if="formError"
+          class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600"
+        >
+          {{ formError }}
+        </div>
+      </div>
+
+      <template #footer>
+        <button class="btn-secondary btn-sm" @click="showForm = false">
+          取消
+        </button>
+        <button
+          class="btn-primary btn-sm"
+          @click="handleSave"
+          :disabled="formSaving"
+        >
+          {{ formSaving ? '保存中...' : '保存' }}
+        </button>
+      </template>
+    </AppModal>
 
     <ConfirmDialog
       :show="!!deletingCat"
@@ -166,36 +231,115 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { COMMON_CATEGORY_ICON } from '@shared/icon-names.js'
+import { useRoute, useRouter } from 'vue-router'
 import { useCategoriesStore } from '../stores/categories.js'
 import { useSettingsStore } from '../stores/settings.js'
+import AppModal from '../components/AppModal.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AppIcon from '../components/AppIcon.vue'
+import ColorPicker from '../components/ColorPicker.vue'
+import { generateCategoryColor } from '@shared/category-colors.js'
+import {
+  findIconLabel,
+  filterIconGroups,
+  normalizeIconGroups,
+  toAlphaColor
+} from '../utils/category-ui.js'
 
+const route = useRoute()
+const router = useRouter()
 const store = useCategoriesStore()
 const settingsStore = useSettingsStore()
-const icons = computed(() => settingsStore.icons)
 
 const activeType = ref('expense')
 const showForm = ref(false)
 const editingCat = ref(null)
 const createParent = ref(null)
 const formName = ref('')
-const formIcon = ref('folder')
+const formIcon = ref(COMMON_CATEGORY_ICON)
+const formColor = ref(generateCategoryColor())
+const formFieldErrors = ref({ name: '' })
 const formError = ref('')
 const formSaving = ref(false)
 const deletingCat = ref(null)
 
+const allIconGroups = computed(() => normalizeIconGroups(settingsStore.icons))
+const currentIconType = computed(
+  () => editingCat.value?.type || createParent.value?.type || activeType.value
+)
+const iconGroups = computed(() =>
+  filterIconGroups(allIconGroups.value, currentIconType.value)
+)
+const formTitle = computed(() => {
+  if (editingCat.value) {
+    return '编辑分类'
+  }
+
+  return createParent.value ? '新增子分类' : '新增大类'
+})
+const selectedIconLabel = computed(
+  () =>
+    findIconLabel(iconGroups.value, formIcon.value) ||
+    findIconLabel(allIconGroups.value, formIcon.value) ||
+    formIcon.value
+)
+
 const filteredTree = computed(() =>
   activeType.value === 'income' ? store.incomeTree : store.expenseTree
 )
+const isParentForm = computed(() =>
+  editingCat.value ? !editingCat.value.parent_id : !createParent.value
+)
+const inheritedColor = computed(
+  () =>
+    createParent.value?.effective_color ||
+    editingCat.value?.effective_color ||
+    formColor.value
+)
+const previewAccentColor = computed(() =>
+  isParentForm.value ? formColor.value : inheritedColor.value
+)
+
+function getIconOptionStyle(selected) {
+  if (!selected) {
+    return {}
+  }
+
+  return {
+    color: previewAccentColor.value,
+    borderColor: previewAccentColor.value,
+    boxShadow: `inset 0 0 0 1px ${previewAccentColor.value}`,
+    backgroundColor: toAlphaColor(previewAccentColor.value, 0.12)
+  }
+}
+
+function clearFormFieldError(field) {
+  if (formFieldErrors.value[field]) {
+    formFieldErrors.value = {
+      ...formFieldErrors.value,
+      [field]: ''
+    }
+  }
+
+  if (formError.value) {
+    formError.value = ''
+  }
+}
+
+function resetFormErrors() {
+  formFieldErrors.value = { name: '' }
+  formError.value = ''
+}
 
 function openCreate(parent) {
   editingCat.value = null
   createParent.value = parent
   formName.value = ''
-  formIcon.value = 'folder'
-  formError.value = ''
+  formIcon.value = parent?.icon || COMMON_CATEGORY_ICON
+  formColor.value = parent?.effective_color || generateCategoryColor()
+  resetFormErrors()
   showForm.value = true
 }
 
@@ -204,34 +348,57 @@ function openEdit(cat) {
   createParent.value = null
   formName.value = cat.name
   formIcon.value = cat.icon
-  formError.value = ''
+  formColor.value = cat.parent_id
+    ? cat.effective_color || generateCategoryColor()
+    : cat.color || generateCategoryColor()
+  resetFormErrors()
   showForm.value = true
 }
 
 async function handleSave() {
-  if (!formName.value.trim()) {
-    formError.value = '请输入名称'
+  const trimmedName = formName.value.trim()
+
+  formFieldErrors.value = { name: '' }
+
+  if (!trimmedName) {
+    formFieldErrors.value.name = '请输入名称'
+    formError.value = ''
     return
   }
+
   formSaving.value = true
   formError.value = ''
+
   try {
     if (editingCat.value) {
-      await store.update(editingCat.value.id, {
-        name: formName.value.trim(),
+      const payload = {
+        name: trimmedName,
         icon: formIcon.value
-      })
+      }
+
+      if (isParentForm.value) {
+        payload.color = formColor.value
+      }
+
+      await store.update(editingCat.value.id, payload)
     } else {
-      await store.create({
-        name: formName.value.trim(),
+      const payload = {
+        name: trimmedName,
         type: activeType.value,
         parent_id: createParent.value?.id || null,
         icon: formIcon.value
-      })
+      }
+
+      if (isParentForm.value) {
+        payload.color = formColor.value
+      }
+
+      await store.create(payload)
     }
+
     showForm.value = false
-  } catch (e) {
-    formError.value = e.message
+  } catch (error) {
+    formError.value = error.message
   } finally {
     formSaving.value = false
   }
@@ -244,20 +411,25 @@ function confirmDelete(cat) {
 async function handleDelete() {
   try {
     await store.remove(deletingCat.value.id)
-  } catch (e) {
-    alert(e.message)
+  } catch (error) {
+    alert(error.message)
   }
+
   deletingCat.value = null
 }
-</script>
 
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-</style>
+watch(
+  () => [route.query.type, route.query.create],
+  ([queryType, create]) => {
+    if (queryType === 'income' || queryType === 'expense') {
+      activeType.value = queryType
+    }
+
+    if (create === '1') {
+      openCreate(null)
+      router.replace({ name: 'Categories' })
+    }
+  },
+  { immediate: true }
+)
+</script>

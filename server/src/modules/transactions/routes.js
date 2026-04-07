@@ -30,8 +30,7 @@ export function registerTransactionRoutes(router) {
 
   router.post('/api/transactions', (req, res) => {
     try {
-      const { type, amount, currency, exchange_rate, category_id, note, date } =
-        req.body
+      const { type, amount, currency, category_id, note, date } = req.body
       if (!type || !amount || !category_id || !date) {
         return error(res, '缺少必填字段')
       }
@@ -43,12 +42,24 @@ export function registerTransactionRoutes(router) {
         type,
         amount: Number(amount),
         currency,
-        exchange_rate: exchange_rate ? Number(exchange_rate) : undefined,
         category_id: Number(category_id),
         note,
         date
       })
       created(res, data)
+    } catch (e) {
+      error(res, e.message)
+    }
+  })
+
+  router.get('/api/transactions/:id', (req, res) => {
+    try {
+      const data = service.getTransaction(Number(req.params.id))
+      if (!data) {
+        return error(res, '账目不存在')
+      }
+
+      json(res, data)
     } catch (e) {
       error(res, e.message)
     }

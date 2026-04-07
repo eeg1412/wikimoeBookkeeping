@@ -31,6 +31,7 @@
           :name="rule.category_icon || 'recurring'"
           :size="24"
           class="mt-0.5"
+          :style="getRuleCategoryStyle(rule)"
         />
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-2">
@@ -99,6 +100,7 @@ import { useRecurringStore } from '../stores/recurring.js'
 import { useSettingsStore } from '../stores/settings.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AppIcon from '../components/AppIcon.vue'
+import { getCategoryAccentColor } from '../utils/category-ui.js'
 
 const store = useRecurringStore()
 const settingsStore = useSettingsStore()
@@ -111,6 +113,11 @@ const FREQ_MAP = {
   yearly: '每年'
 }
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+
+function getRuleCategoryStyle(rule) {
+  const color = getCategoryAccentColor(rule)
+  return color ? { color } : undefined
+}
 
 function frequencyText(rule) {
   let text = FREQ_MAP[rule.frequency] || rule.frequency

@@ -3,6 +3,11 @@ import {
   DEFAULT_CATEGORY_ICON,
   normalizeCategoryIconName
 } from '../../constants/icons.js'
+import {
+  generateCategoryColor,
+  normalizeCategoryColor,
+  parseCategoryColor
+} from '../../../../shared/category-colors.js'
 
 export function listCategories() {
   const db = getDb()
@@ -15,17 +20,34 @@ export function listCategories() {
   const parents = rows.filter(r => !r.parent_id)
   return parents.map(p => ({
     ...p,
-    children: rows.filter(r => r.parent_id === p.id)
+    effective_color: p.color,
+    children: rows
+      .filter(r => r.parent_id === p.id)
+      .map(child => ({
+        ...child,
+        effective_color: p.color || child.color || null
+      }))
   }))
 }
 
 export function getCategoryFlat() {
   const db = getDb()
-  return db
+  const rows = db
     .prepare(
       'SELECT * FROM categories WHERE is_deleted = 0 ORDER BY sort_order, id'
     )
     .all()
+
+  const parentColorMap = new Map(
+    rows.filter(row => !row.parent_id).map(row => [row.id, row.color || null])
+  )
+
+  return rows.map(row => ({
+    ...row,
+    effective_color: row.parent_id
+      ? parentColorMap.get(row.parent_id) || row.color || null
+      : row.color || null
+  }))
 }
 
 export function getCategory(id) {
@@ -35,7 +57,14 @@ export function getCategory(id) {
     .get(id)
 }
 
-export function createCategory({ name, type, parent_id, icon, sort_order }) {
+export function createCategory({
+  name,
+  type,
+  parent_id,
+  icon,
+  color,
+  sort_order
+}) {
   const db = getDb()
 
   if (parent_id) {
@@ -47,22 +76,25 @@ export function createCategory({ name, type, parent_id, icon, sort_order }) {
     if (parent.type !== type) throw new Error('子分类类型必须与父分类一致')
   }
 
+  const nextColor = parent_id ? null : resolveCategoryColor(color)
+
   const result = db
     .prepare(
-      'INSERT INTO categories (name, type, parent_id, icon, sort_order) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO categories (name, type, parent_id, icon, color, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
     )
     .run(
       name,
       type,
       parent_id || null,
       normalizeCategoryIconName(icon || DEFAULT_CATEGORY_ICON),
+      nextColor,
       sort_order || 0
     )
 
   return getCategory(Number(result.lastInsertRowid))
 }
 
-export function updateCategory(id, { name, icon, sort_order }) {
+export function updateCategory(id, { name, icon, color, sort_order }) {
   const db = getDb()
   const cat = getCategory(id)
   if (!cat) throw new Error('分类不存在')
@@ -72,9 +104,13 @@ export function updateCategory(id, { name, icon, sort_order }) {
       ? normalizeCategoryIconName(cat.icon)
       : normalizeCategoryIconName(icon)
 
+  const nextColor = cat.parent_id
+    ? null
+    : resolveCategoryColor(color, cat.color)
+
   db.prepare(
-    "UPDATE categories SET name = ?, icon = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ?"
-  ).run(name ?? cat.name, nextIcon, sort_order ?? cat.sort_order, id)
+    "UPDATE categories SET name = ?, icon = ?, color = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ?"
+  ).run(name ?? cat.name, nextIcon, nextColor, sort_order ?? cat.sort_order, id)
 
   return getCategory(id)
 }
@@ -101,4 +137,16 @@ export function deleteCategory(id) {
   db.prepare(
     "UPDATE categories SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?"
   ).run(id)
+}
+
+function resolveCategoryColor(color, fallback = null) {
+  if (color == null || String(color).trim() === '') {
+    return normalizeCategoryColor(fallback, generateCategoryColor())
+  }
+
+  if (!parseCategoryColor(color)) {
+    throw new Error('分类颜色无效')
+  }
+
+  return normalizeCategoryColor(color, fallback)
 }

@@ -42,8 +42,7 @@ const iconSize = computed(() =>
 
 const iconStyle = computed(() => ({
   width: iconSize.value,
-  height: iconSize.value,
-  color: 'currentColor'
+  height: iconSize.value
 }))
 
 function formatIconMarkup(svg) {
