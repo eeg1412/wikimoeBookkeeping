@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { signToken } from '../../auth/jwt.js'
+import { getJwtSecret } from '../../auth/key-store.js'
 import { verifyPassword } from '../../auth/password.js'
 import { json, error } from '../../utils/response.js'
 import {
@@ -30,14 +31,17 @@ export function registerAuthRoutes(router) {
     const adminUser = process.env.ADMIN_USERNAME
     const adminPass = process.env.ADMIN_PASSWORD
     const adminPassHash = process.env.ADMIN_PASSWORD_HASH
-    const jwtSecret = process.env.JWT_SECRET
 
     if (!adminUser || (!adminPass && !adminPassHash)) {
       return error(res, '未配置管理员账号', 500)
     }
 
-    if (!jwtSecret) {
-      return error(res, '服务端未正确配置 JWT_SECRET', 500)
+    let jwtSecret
+    try {
+      jwtSecret = getJwtSecret()
+    } catch (e) {
+      console.error('JWT key unavailable:', e)
+      return error(res, '服务端 JWT 密钥不可用', 500)
     }
 
     const userHash = crypto.createHash('sha256').update(username).digest()

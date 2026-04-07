@@ -1,4 +1,8 @@
 import { getDb } from '../../db/init.js'
+import {
+  DEFAULT_CATEGORY_ICON,
+  normalizeCategoryIconName
+} from '../../constants/icons.js'
 
 export function listCategories() {
   const db = getDb()
@@ -47,7 +51,13 @@ export function createCategory({ name, type, parent_id, icon, sort_order }) {
     .prepare(
       'INSERT INTO categories (name, type, parent_id, icon, sort_order) VALUES (?, ?, ?, ?, ?)'
     )
-    .run(name, type, parent_id || null, icon || '📁', sort_order || 0)
+    .run(
+      name,
+      type,
+      parent_id || null,
+      normalizeCategoryIconName(icon || DEFAULT_CATEGORY_ICON),
+      sort_order || 0
+    )
 
   return getCategory(Number(result.lastInsertRowid))
 }
@@ -57,9 +67,14 @@ export function updateCategory(id, { name, icon, sort_order }) {
   const cat = getCategory(id)
   if (!cat) throw new Error('分类不存在')
 
+  const nextIcon =
+    icon == null
+      ? normalizeCategoryIconName(cat.icon)
+      : normalizeCategoryIconName(icon)
+
   db.prepare(
     "UPDATE categories SET name = ?, icon = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ?"
-  ).run(name ?? cat.name, icon ?? cat.icon, sort_order ?? cat.sort_order, id)
+  ).run(name ?? cat.name, nextIcon, sort_order ?? cat.sort_order, id)
 
   return getCategory(id)
 }

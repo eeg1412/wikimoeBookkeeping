@@ -25,11 +25,15 @@
       <div
         v-for="rule in store.rules"
         :key="rule.id"
-        class="card flex items-start gap-3"
+        class="card flex flex-wrap items-start gap-3"
       >
-        <span class="text-2xl mt-0.5">{{ rule.category_icon || '🔄' }}</span>
+        <AppIcon
+          :name="rule.category_icon || 'recurring'"
+          :size="24"
+          class="mt-0.5"
+        />
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <span class="font-medium text-on-surface">{{ rule.name }}</span>
             <span
               :class="
@@ -58,7 +62,7 @@
             {{ settingsStore.formatMoney(rule.amount, rule.currency) }}
           </div>
         </div>
-        <div class="flex gap-1">
+        <div class="flex w-full flex-wrap gap-1 sm:w-auto sm:justify-end">
           <button class="btn-ghost btn-sm text-xs" @click="toggleActive(rule)">
             {{ rule.is_active ? '暂停' : '启用' }}
           </button>
@@ -94,6 +98,7 @@ import { ref, onMounted } from 'vue'
 import { useRecurringStore } from '../stores/recurring.js'
 import { useSettingsStore } from '../stores/settings.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const store = useRecurringStore()
 const settingsStore = useSettingsStore()

@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
       <button class="btn-ghost btn-sm" @click="$router.back()">← 返回</button>
       <h1 class="page-title">{{ isEdit ? '编辑账目' : '记一笔' }}</h1>
     </div>

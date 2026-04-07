@@ -8,7 +8,7 @@
       <p class="text-sm text-on-surface-secondary">
         将所有数据导出为文件，便于备份和迁移。
       </p>
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3">
         <button class="btn-primary btn-sm" @click="handleExport('json')">
           导出 JSON
         </button>
@@ -26,7 +26,7 @@
       </p>
       <div>
         <label class="label">导入模式</label>
-        <select v-model="importMode" class="select w-40">
+        <select v-model="importMode" class="select w-full sm:w-40">
           <option value="merge">合并（推荐）</option>
           <option value="append">全部追加</option>
         </select>

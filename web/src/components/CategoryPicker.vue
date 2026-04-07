@@ -37,7 +37,7 @@
           "
           @click="toggleParent(cat.id)"
         >
-          <span class="text-xl">{{ cat.icon }}</span>
+          <AppIcon :name="cat.icon" :size="22" />
           <span class="mt-0.5 truncate w-full text-center">{{ cat.name }}</span>
         </button>
       </div>
@@ -58,7 +58,7 @@
           "
           @click="selectCategory(cat.id)"
         >
-          <span class="text-lg">{{ cat.icon }}</span>
+          <AppIcon :name="cat.icon" :size="20" />
           <span class="mt-0.5 truncate w-full text-center">{{ cat.name }}</span>
         </button>
       </div>
@@ -69,6 +69,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useCategoriesStore } from '../stores/categories.js'
+import AppIcon from './AppIcon.vue'
 
 const props = defineProps({
   modelValue: Number,

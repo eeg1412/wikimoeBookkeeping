@@ -11,32 +11,32 @@
     </div>
 
     <!-- Summary cards -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="收入"
         :value="summary?.income || 0"
         type="income"
         :prefix="currencySymbol"
-        icon="📈"
+        icon="income"
       />
       <StatCard
         title="支出"
         :value="summary?.expense || 0"
         type="expense"
         :prefix="currencySymbol"
-        icon="📉"
+        icon="expense"
       />
       <StatCard
         title="结余"
         :value="summary?.net || 0"
         :prefix="currencySymbol"
-        icon="💰"
+        icon="balance"
         :sub="`共${(summary?.income_count || 0) + (summary?.expense_count || 0)}笔`"
       />
       <StatCard
         title="笔数"
         :value="`收${summary?.income_count || 0} / 支${summary?.expense_count || 0}`"
-        icon="📝"
+        icon="notes"
       />
     </div>
 
@@ -78,7 +78,7 @@
           :key="txn.id"
           class="flex items-center gap-3 py-3"
         >
-          <span class="text-2xl">{{ txn.category_icon || '📁' }}</span>
+          <AppIcon :name="txn.category_icon || 'folder'" :size="24" />
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium text-on-surface truncate">
               {{
@@ -119,6 +119,7 @@ import { useReportsStore } from '../stores/reports.js'
 import { api } from '../api/client.js'
 import StatCard from '../components/StatCard.vue'
 import SimpleChart from '../components/SimpleChart.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const settingsStore = useSettingsStore()
 const reportsStore = useReportsStore()

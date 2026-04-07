@@ -1,3 +1,5 @@
+import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON } from '../constants/icons.js'
+
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -10,7 +12,7 @@ CREATE TABLE IF NOT EXISTS categories (
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
   parent_id INTEGER DEFAULT NULL,
-  icon TEXT DEFAULT '📁',
+  icon TEXT DEFAULT '${DEFAULT_CATEGORY_ICON}',
   sort_order INTEGER DEFAULT 0,
   is_deleted INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now')),
@@ -120,45 +122,4 @@ export const CURRENCIES = [
   { code: 'RUB', name: '俄罗斯卢布', symbol: '₽' }
 ]
 
-export const CATEGORY_ICONS = [
-  '🍔',
-  '🛒',
-  '🏠',
-  '🚗',
-  '🚌',
-  '✈️',
-  '🎮',
-  '📱',
-  '💻',
-  '👔',
-  '👗',
-  '💄',
-  '🏥',
-  '💊',
-  '📚',
-  '🎓',
-  '🎬',
-  '🎵',
-  '⚽',
-  '🏋️',
-  '🐱',
-  '🐶',
-  '👶',
-  '🎁',
-  '💰',
-  '📈',
-  '💳',
-  '🏦',
-  '💵',
-  '🪙',
-  '☕',
-  '🍺',
-  '🎂',
-  '🛍️',
-  '💇',
-  '🔧',
-  '📞',
-  '💡',
-  '🚰',
-  '🗑️'
-]
+export { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON }

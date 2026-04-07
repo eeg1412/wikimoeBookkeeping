@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { Router } from './utils/router.js'
 import { authMiddleware } from './auth/middleware.js'
+import { getJwtSecret } from './auth/key-store.js'
 import { getDb, closeDb } from './db/init.js'
 import { Scheduler } from './modules/recurring/scheduler.js'
 
@@ -217,16 +218,14 @@ function validateRuntimeConfig(port) {
     errors.push('缺少 ADMIN_USERNAME')
   }
 
-  if (!process.env.JWT_SECRET) {
-    errors.push('缺少 JWT_SECRET')
-  }
-
   if (!process.env.ADMIN_PASSWORD && !process.env.ADMIN_PASSWORD_HASH) {
     errors.push('ADMIN_PASSWORD 或 ADMIN_PASSWORD_HASH 至少需要配置一个')
   }
 
-  if (isWeakJwtSecret(process.env.JWT_SECRET)) {
-    addSecurityIssue('JWT_SECRET 仍是弱默认值或长度不足 32', errors, warnings)
+  try {
+    getJwtSecret()
+  } catch (e) {
+    errors.push(e.message)
   }
 
   if (
@@ -258,21 +257,6 @@ function addSecurityIssue(message, errors, warnings) {
   }
 
   warnings.push(message)
-}
-
-function isWeakJwtSecret(secret) {
-  const value = String(secret || '')
-    .trim()
-    .toLowerCase()
-  if (!value) return true
-  if (value.length < 32) return true
-
-  return [
-    'please-change-this-to-a-random-string',
-    'changeme',
-    'change-me',
-    'default-secret'
-  ].includes(value)
 }
 
 function isWeakAdminPassword(password) {

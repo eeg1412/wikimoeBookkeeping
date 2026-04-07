@@ -5,7 +5,7 @@
       class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-60 lg:flex-col border-r border-border bg-surface-secondary"
     >
       <div class="flex h-14 items-center gap-2 px-5 border-b border-border">
-        <span class="text-xl">💰</span>
+        <AppIcon name="brand" :size="22" class="text-primary" />
         <span class="font-bold text-lg text-on-surface">记账本</span>
       </div>
       <nav class="flex-1 overflow-y-auto py-3 px-3 space-y-1">
@@ -16,7 +16,7 @@
           class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-on-surface-secondary transition-colors hover:bg-border/30 hover:text-on-surface"
           :class="isActive(item.to) ? '!bg-primary/10 !text-primary' : ''"
         >
-          <span class="text-lg w-6 text-center">{{ item.icon }}</span>
+          <AppIcon :name="item.icon" :size="20" class="w-6 text-center" />
           <span>{{ item.label }}</span>
         </router-link>
       </nav>
@@ -48,26 +48,14 @@
       class="lg:hidden sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface-secondary/80 backdrop-blur px-4"
     >
       <div class="flex items-center gap-2">
-        <span class="text-lg">💰</span>
+        <AppIcon name="brand" :size="20" class="text-primary" />
         <span class="font-bold text-on-surface">记账本</span>
       </div>
       <button
         @click="moreOpen = !moreOpen"
         class="btn-icon text-on-surface-secondary"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
+        <AppIcon name="menu" :size="20" />
       </button>
     </header>
 
@@ -88,7 +76,12 @@
           class="flex h-14 items-center justify-between px-4 border-b border-border"
         >
           <span class="font-bold">菜单</span>
-          <button @click="moreOpen = false" class="btn-icon">✕</button>
+          <button
+            @click="moreOpen = false"
+            class="btn-icon text-on-surface-secondary"
+          >
+            <AppIcon name="close" :size="20" />
+          </button>
         </div>
         <nav class="p-3 space-y-1">
           <router-link
@@ -99,7 +92,7 @@
             :class="isActive(item.to) ? '!bg-primary/10 !text-primary' : ''"
             @click="moreOpen = false"
           >
-            <span class="text-lg w-6 text-center">{{ item.icon }}</span>
+            <AppIcon :name="item.icon" :size="20" class="w-6 text-center" />
             <span>{{ item.label }}</span>
           </router-link>
         </nav>
@@ -134,7 +127,7 @@
         class="flex flex-col items-center gap-0.5 text-[10px] font-medium text-on-surface-secondary min-w-[56px] py-1"
         :class="isActive(item.to) ? '!text-primary' : ''"
       >
-        <span class="text-xl">{{ item.icon }}</span>
+        <AppIcon :name="item.icon" :size="22" />
         <span>{{ item.label }}</span>
       </router-link>
       <router-link
@@ -142,9 +135,10 @@
         class="flex flex-col items-center gap-0.5 min-w-[56px] py-1"
       >
         <span
-          class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-xl shadow-lg -mt-4"
-          >+</span
+          class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg -mt-4"
         >
+          <AppIcon name="add" :size="20" />
+        </span>
         <span class="text-[10px] font-medium text-primary">记账</span>
       </router-link>
       <router-link
@@ -152,14 +146,14 @@
         class="flex flex-col items-center gap-0.5 text-[10px] font-medium text-on-surface-secondary min-w-[56px] py-1"
         :class="isActive('/reports') ? '!text-primary' : ''"
       >
-        <span class="text-xl">📊</span>
+        <AppIcon name="reports" :size="22" />
         <span>统计</span>
       </router-link>
       <button
         @click="moreOpen = true"
         class="flex flex-col items-center gap-0.5 text-[10px] font-medium text-on-surface-secondary min-w-[56px] py-1"
       >
-        <span class="text-xl">☰</span>
+        <AppIcon name="menu" :size="22" />
         <span>更多</span>
       </button>
     </nav>
@@ -172,6 +166,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useCategoriesStore } from '../stores/categories.js'
+import AppIcon from '../components/AppIcon.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -185,19 +180,19 @@ function isActive(to) {
 }
 
 const navItems = [
-  { to: '/', icon: '🏠', label: '总览' },
-  { to: '/transactions', icon: '📋', label: '账目' },
-  { to: '/categories', icon: '📂', label: '分类' },
-  { to: '/recurring', icon: '🔄', label: '周期' },
-  { to: '/reports', icon: '📊', label: '统计' },
-  { to: '/data', icon: '💾', label: '数据' },
-  { to: '/login-attempts', icon: '🔒', label: '登录日志' },
-  { to: '/settings', icon: '⚙️', label: '设置' }
+  { to: '/', icon: 'overview', label: '总览' },
+  { to: '/transactions', icon: 'transactions', label: '账目' },
+  { to: '/categories', icon: 'categories', label: '分类' },
+  { to: '/recurring', icon: 'recurring', label: '周期' },
+  { to: '/reports', icon: 'reports', label: '统计' },
+  { to: '/data', icon: 'data', label: '数据' },
+  { to: '/login-attempts', icon: 'security', label: '登录日志' },
+  { to: '/settings', icon: 'settings', label: '设置' }
 ]
 
 const bottomNav = [
-  { to: '/', icon: '🏠', label: '总览' },
-  { to: '/transactions', icon: '📋', label: '账目' }
+  { to: '/', icon: 'overview', label: '总览' },
+  { to: '/transactions', icon: 'transactions', label: '账目' }
 ]
 
 onMounted(async () => {

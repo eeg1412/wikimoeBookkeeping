@@ -9,5 +9,6 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+      - ./keys:/app/keys
     environment:
       - NODE_ENV=production

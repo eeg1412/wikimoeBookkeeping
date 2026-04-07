@@ -8,6 +8,7 @@ web/dist/
 !.env.example
 
 /data/
+/keys/
 *.db
 *.db-*
 *.sqlite

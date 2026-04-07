@@ -1,7 +1,10 @@
 <template>
   <div>
     <!-- Donut chart -->
-    <div v-if="type === 'donut'" class="flex items-center gap-6">
+    <div
+      v-if="type === 'donut'"
+      class="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6"
+    >
       <div
         class="relative flex-shrink-0"
         :style="{ width: size + 'px', height: size + 'px' }"
@@ -42,7 +45,7 @@
           </div>
         </div>
       </div>
-      <div class="flex-1 space-y-1.5 min-w-0">
+      <div class="w-full flex-1 space-y-1.5 min-w-0">
         <div
           v-for="(item, i) in legendItems"
           :key="i"
@@ -63,36 +66,43 @@
     </div>
 
     <!-- Bar chart -->
-    <div v-else-if="type === 'bar'">
-      <div class="flex items-end gap-2" :style="{ height: height + 'px' }">
-        <div
-          v-for="(group, i) in barGroups"
-          :key="i"
-          class="flex-1 flex flex-col items-center gap-1 h-full justify-end min-w-0"
-        >
-          <div class="flex items-end gap-1 w-full h-full justify-center">
-            <div
-              v-for="(bar, j) in group.series"
-              :key="j"
-              class="rounded-t transition-all duration-300 min-h-[2px] flex-1 max-w-5"
-              :style="{
-                height: bar.percentage + '%',
-                backgroundColor: bar.color
-              }"
-              :title="`${group.label} ${bar.label}: ${bar.value}`"
-            ></div>
+    <div v-else-if="type === 'bar'" class="overflow-x-auto pb-1">
+      <div :style="{ minWidth: barMinWidth + 'px' }">
+        <div class="flex items-end gap-2" :style="{ height: height + 'px' }">
+          <div
+            v-for="(group, i) in barGroups"
+            :key="i"
+            class="flex-1 flex flex-col items-center gap-1 h-full justify-end min-w-0"
+          >
+            <div class="flex items-end gap-1 w-full h-full justify-center">
+              <div
+                v-for="(bar, j) in group.series"
+                :key="j"
+                class="rounded-t transition-all duration-300 min-h-[2px] flex-1 max-w-5"
+                :style="{
+                  height: bar.percentage + '%',
+                  backgroundColor: bar.color
+                }"
+                :title="`${group.label} ${bar.label}: ${bar.value}`"
+              ></div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="flex gap-2 mt-1">
-        <div
-          v-for="(group, i) in barGroups"
-          :key="i"
-          class="flex-1 text-center min-w-0"
-        >
-          <span class="text-[9px] text-on-surface-secondary truncate block">{{
-            group.label
-          }}</span>
+        <div class="mt-3 flex items-start gap-2">
+          <div v-for="(group, i) in barGroups" :key="i" class="flex-1 min-w-0">
+            <div :class="isDenseBarChart ? 'h-14' : ''">
+              <span
+                class="block whitespace-nowrap text-[10px] font-medium text-on-surface"
+                :class="
+                  isDenseBarChart
+                    ? 'origin-top-left rotate-45 translate-x-2 text-left'
+                    : 'truncate text-center'
+                "
+              >
+                {{ group.label }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -197,4 +207,10 @@ const barGroups = computed(() => {
           ]
   }))
 })
+
+const isDenseBarChart = computed(() => barGroups.value.length > 12)
+
+const barMinWidth = computed(() =>
+  Math.max(barGroups.value.length * (isDenseBarChart.value ? 52 : 28), 240)
+)
 </script>

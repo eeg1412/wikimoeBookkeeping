@@ -1,5 +1,6 @@
 import { getDb } from '../../db/init.js'
-import { CURRENCIES, CATEGORY_ICONS } from '../../db/schema.js'
+import { CURRENCIES } from '../../db/schema.js'
+import { CATEGORY_ICONS } from '../../constants/icons.js'
 
 export function getSettings() {
   const db = getDb()

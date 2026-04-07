@@ -4,7 +4,9 @@
   >
     <div class="w-full max-w-sm">
       <div class="text-center mb-8">
-        <div class="text-5xl mb-3">💰</div>
+        <div class="flex justify-center mb-3 text-primary">
+          <AppIcon name="brand" :size="48" />
+        </div>
         <h1 class="text-2xl font-bold text-on-surface">记账本</h1>
         <p class="text-sm text-on-surface-secondary mt-1">个人财务管理</p>
       </div>
@@ -41,6 +43,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import AppIcon from '../components/AppIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

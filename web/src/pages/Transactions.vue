@@ -69,7 +69,7 @@
             class="flex items-center gap-3 px-4 py-3 hover:bg-surface-secondary/50 transition-colors cursor-pointer"
             @click="$router.push(`/transactions/${txn.id}/edit`)"
           >
-            <span class="text-2xl">{{ txn.category_icon || '📁' }}</span>
+            <AppIcon :name="txn.category_icon || 'folder'" :size="24" />
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium text-on-surface truncate">
                 {{
@@ -118,7 +118,7 @@
               title="删除"
               @click="askDelete(txn, $event)"
             >
-              🗑️
+              <AppIcon name="delete" :size="18" />
             </button>
           </div>
         </div>
@@ -166,6 +166,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useTransactionsStore } from '../stores/transactions.js'
 import { useSettingsStore } from '../stores/settings.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const store = useTransactionsStore()
 const settingsStore = useSettingsStore()

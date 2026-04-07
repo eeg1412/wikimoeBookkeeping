@@ -31,12 +31,13 @@
 ```env
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=请替换为强密码
-JWT_SECRET=请替换为至少32位随机字符串
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 DB_PATH=./data/bookkeeping.db
 PORT=3000
 BEHIND_CDN=false
 ```
+
+JWT 签名密钥不再通过环境变量配置。服务首次启动时会自动生成 ./keys/jwt.key，后续重启会复用该文件；如需重置密钥，删除该文件后重新启动即可。
 
 生产环境推荐使用 ADMIN_PASSWORD_HASH 替代明文密码。可用下面的命令生成 scrypt 哈希：
 
@@ -50,7 +51,6 @@ node --input-type=module -e "import { hashPassword } from './server/src/auth/pas
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=
 ADMIN_PASSWORD_HASH=scrypt$...$...
-JWT_SECRET=请替换为至少32位随机字符串
 ```
 
 ### 3. 安装依赖并构建前端
@@ -95,14 +95,15 @@ Vite 开发服务器默认运行在 http://localhost:5173，并代理 /api 到 h
 docker compose up -d --build
 ```
 
-容器默认读取根目录 .env，数据保存在 data 目录。
+容器默认读取根目录 .env，数据保存在 data 目录，JWT 密钥保存在 keys/jwt.key 并通过 docker-compose 持久化。
 
 ## 安全说明
 
 - .env、data、node_modules、构建产物都已通过 .gitignore 排除，不应提交到仓库。
-- 容器生产模式下会拒绝弱默认密码和弱 JWT_SECRET。
+- JWT 签名密钥会在首次启动时自动生成到 keys/jwt.key；如果文件为空、损坏或长度不足，服务会拒绝启动。
+- 容器生产模式下会拒绝弱默认密码。
 - 默认只允许本机来源访问 API；如有反向代理或独立前端域名，请配置 ALLOWED_ORIGINS。
-- 前端已移除 v-html 导航图标渲染，降低 XSS 风险。
+- 前端图标统一使用内置 Fluent SVG 白名单资源，不接受用户输入的 SVG 或 HTML。
 - 导入接口增加了数据结构、日期、数值和数量上限校验。
 
 ## 常用命令

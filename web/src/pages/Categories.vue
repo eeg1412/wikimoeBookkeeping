@@ -44,9 +44,13 @@
         :key="parent.id"
         class="card !p-0 overflow-hidden"
       >
-        <div class="flex items-center gap-3 px-4 py-3 bg-surface-secondary/50">
-          <span class="text-xl">{{ parent.icon }}</span>
-          <span class="font-medium flex-1">{{ parent.name }}</span>
+        <div
+          class="flex flex-wrap items-center gap-2 px-4 py-3 bg-surface-secondary/50 sm:gap-3"
+        >
+          <AppIcon :name="parent.icon" :size="22" />
+          <span class="font-medium flex-1 min-w-0 truncate">{{
+            parent.name
+          }}</span>
           <button class="btn-ghost btn-sm text-xs" @click="openCreate(parent)">
             + 子类
           </button>
@@ -64,10 +68,12 @@
           <div
             v-for="child in parent.children"
             :key="child.id"
-            class="flex items-center gap-3 px-4 py-2.5 pl-10"
+            class="flex flex-wrap items-center gap-2 px-4 py-2.5 pl-10 sm:gap-3"
           >
-            <span class="text-lg">{{ child.icon }}</span>
-            <span class="text-sm flex-1">{{ child.name }}</span>
+            <AppIcon :name="child.icon" :size="20" />
+            <span class="text-sm flex-1 min-w-0 truncate">{{
+              child.name
+            }}</span>
             <button class="btn-ghost btn-sm text-xs" @click="openEdit(child)">
               编辑
             </button>
@@ -117,7 +123,7 @@
                 <button
                   v-for="icon in icons"
                   :key="icon"
-                  class="w-8 h-8 rounded-lg text-lg flex items-center justify-center transition-all"
+                  class="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
                   :class="
                     formIcon === icon
                       ? 'bg-primary/20 ring-2 ring-primary'
@@ -125,7 +131,7 @@
                   "
                   @click="formIcon = icon"
                 >
-                  {{ icon }}
+                  <AppIcon :name="icon" :size="18" />
                 </button>
               </div>
             </div>
@@ -164,6 +170,7 @@ import { ref, computed } from 'vue'
 import { useCategoriesStore } from '../stores/categories.js'
 import { useSettingsStore } from '../stores/settings.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const store = useCategoriesStore()
 const settingsStore = useSettingsStore()
@@ -174,7 +181,7 @@ const showForm = ref(false)
 const editingCat = ref(null)
 const createParent = ref(null)
 const formName = ref('')
-const formIcon = ref('📁')
+const formIcon = ref('folder')
 const formError = ref('')
 const formSaving = ref(false)
 const deletingCat = ref(null)
@@ -187,7 +194,7 @@ function openCreate(parent) {
   editingCat.value = null
   createParent.value = parent
   formName.value = ''
-  formIcon.value = '📁'
+  formIcon.value = 'folder'
   formError.value = ''
   showForm.value = true
 }

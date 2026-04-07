@@ -2,9 +2,16 @@
   <div class="card">
     <div class="flex items-center justify-between mb-1">
       <span class="text-sm text-on-surface-secondary">{{ title }}</span>
-      <span v-if="icon" class="text-lg">{{ icon }}</span>
+      <AppIcon
+        v-if="icon"
+        :name="icon"
+        :size="20"
+        class="text-on-surface-secondary"
+      />
     </div>
-    <div class="text-2xl font-bold" :class="valueClass">{{ displayValue }}</div>
+    <div class="text-xl font-bold sm:text-2xl" :class="valueClass">
+      {{ displayValue }}
+    </div>
     <div v-if="sub" class="text-xs text-on-surface-secondary mt-1">
       {{ sub }}
     </div>
@@ -13,6 +20,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import AppIcon from './AppIcon.vue'
 
 const props = defineProps({
   title: String,

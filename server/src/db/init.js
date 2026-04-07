@@ -2,6 +2,10 @@ import { DatabaseSync } from 'node:sqlite'
 import { existsSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { SCHEMA_SQL, DEFAULT_SETTINGS } from './schema.js'
+import {
+  DEFAULT_CATEGORY_ICON,
+  LEGACY_CATEGORY_ICON_MAP
+} from '../constants/icons.js'
 
 let db = null
 
@@ -14,6 +18,7 @@ export function getDb() {
     }
     db = new DatabaseSync(dbPath)
     initSchema(db)
+    migrateCategoryIcons(db)
   }
   return db
 }
@@ -36,6 +41,24 @@ function initSchema(database) {
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     insertSetting.run(key, value)
   }
+}
+
+function migrateCategoryIcons(database) {
+  const updateIcon = database.prepare(
+    "UPDATE categories SET icon = ?, updated_at = datetime('now') WHERE icon = ?"
+  )
+
+  for (const [legacyIcon, iconName] of Object.entries(
+    LEGACY_CATEGORY_ICON_MAP
+  )) {
+    updateIcon.run(iconName, legacyIcon)
+  }
+
+  database
+    .prepare(
+      "UPDATE categories SET icon = ?, updated_at = datetime('now') WHERE icon IS NULL OR trim(icon) = ''"
+    )
+    .run(DEFAULT_CATEGORY_ICON)
 }
 
 export function closeDb() {

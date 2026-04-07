@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
       <button class="btn-ghost btn-sm" @click="$router.back()">← 返回</button>
       <h1 class="page-title">{{ isEdit ? '编辑规则' : '新建规则' }}</h1>
     </div>
@@ -44,7 +44,7 @@
 
       <div v-if="form.frequency === 'weekly'">
         <label class="label">星期几</label>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button
             v-for="(d, i) in ['日', '一', '二', '三', '四', '五', '六']"
             :key="i"
@@ -70,7 +70,10 @@
         />
       </div>
 
-      <div v-if="form.frequency === 'yearly'" class="grid grid-cols-2 gap-3">
+      <div
+        v-if="form.frequency === 'yearly'"
+        class="grid grid-cols-1 gap-3 sm:grid-cols-2"
+      >
         <div>
           <label class="label">月份</label>
           <input
@@ -95,7 +98,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label class="label">执行时间（时）</label>
           <input
@@ -127,7 +130,7 @@
         </select>
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label class="label">开始日期</label>
           <input v-model="form.start_date" type="date" class="input" />

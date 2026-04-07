@@ -13,8 +13,9 @@ WORKDIR /app
 COPY package.json ./
 COPY server/ ./server/
 COPY --from=frontend /app/web/dist ./web/dist
+COPY shared/ ./shared/
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data /app/keys
 
 EXPOSE 3000
 

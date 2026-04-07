@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="flex gap-2">
+    <div class="flex flex-col gap-2 sm:flex-row">
       <div class="flex-1">
         <label class="label">金额</label>
         <input
@@ -13,7 +13,7 @@
           placeholder="0.00"
         />
       </div>
-      <div class="w-28">
+      <div class="w-full sm:w-28">
         <label class="label">币种</label>
         <select
           class="select"
@@ -26,7 +26,10 @@
         </select>
       </div>
     </div>
-    <div v-if="showRate" class="mt-2 flex gap-2 items-end">
+    <div
+      v-if="showRate"
+      class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end"
+    >
       <div class="flex-1">
         <label class="label"
           >汇率 (1 {{ currency }} = ? {{ defaultCurrency }})
@@ -44,7 +47,7 @@
           placeholder="1.0000"
         />
       </div>
-      <div class="text-sm text-on-surface-secondary pb-3">
+      <div class="text-sm text-on-surface-secondary sm:pb-3">
         ≈ {{ settingsStore.formatMoney(convertedAmount, defaultCurrency) }}
       </div>
     </div>

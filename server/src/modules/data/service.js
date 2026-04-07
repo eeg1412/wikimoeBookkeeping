@@ -4,6 +4,10 @@ import { createCategory } from '../categories/service.js'
 import { createTransaction } from '../transactions/service.js'
 import { createRule } from '../recurring/service.js'
 import { updateSettings } from '../settings/service.js'
+import {
+  DEFAULT_CATEGORY_ICON,
+  normalizeCategoryIconName
+} from '../../constants/icons.js'
 
 const IMPORT_LIMITS = {
   categories: 1000,
@@ -261,7 +265,9 @@ function normalizeCategory(raw) {
       raw.parent_id == null
         ? null
         : toPositiveInteger(raw.parent_id, '父分类 ID'),
-    icon: toOptionalText(raw.icon, '分类图标', 16) || '📁',
+    icon: normalizeCategoryIconName(
+      toOptionalText(raw.icon, '分类图标', 16) || DEFAULT_CATEGORY_ICON
+    ),
     sort_order:
       toOptionalInteger(raw.sort_order, '分类排序', -999999, 999999) ?? 0
   }

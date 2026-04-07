@@ -1,4 +1,5 @@
 import { verifyToken } from './jwt.js'
+import { getJwtSecret } from './key-store.js'
 import { error } from '../utils/response.js'
 
 export function authMiddleware(req, res, next) {
@@ -16,9 +17,12 @@ export function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.slice(7)
-  const secret = process.env.JWT_SECRET
-  if (!secret) {
-    return error(res, '服务端未正确配置 JWT_SECRET', 500)
+  let secret
+  try {
+    secret = getJwtSecret()
+  } catch (e) {
+    console.error('JWT key unavailable:', e)
+    return error(res, '服务端 JWT 密钥不可用', 500)
   }
 
   try {
