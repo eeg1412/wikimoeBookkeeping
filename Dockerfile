@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/node:latest-dev
+FROM cgr.dev/chainguard/node:24
 ENV NODE_ENV=production
 WORKDIR /app
 COPY package.json ./
@@ -10,4 +10,4 @@ RUN mkdir -p /app/data /app/keys
 
 EXPOSE 3000
 
-CMD ["node", "--experimental-sqlite", "server/src/app.js"]
+CMD ["--experimental-sqlite", "server/src/app.js"]

@@ -151,7 +151,7 @@ Vite 开发服务器默认运行在 http://localhost:5173，并代理 /api 到 h
 
 ## Docker
 
-Docker 镜像不再在容器内编译前端，而是直接使用仓库中的 web/dist 产物。
+Docker 镜像不再在容器内编译前端，而是直接使用仓库中的 web/dist 产物；运行时基础镜像固定为 Node 24。
 
 先在本地构建前端：
 
