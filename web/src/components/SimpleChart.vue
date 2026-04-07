@@ -185,8 +185,7 @@ const barGroups = computed(() => {
             label: series.label || `系列 ${j + 1}`,
             value: Number(series.value) || 0,
             percentage: (Math.abs(Number(series.value) || 0) / max) * 100,
-            color:
-              series.color || props.colors[(i + j) % props.colors.length]
+            color: series.color || props.colors[(i + j) % props.colors.length]
           }))
         : [
             {

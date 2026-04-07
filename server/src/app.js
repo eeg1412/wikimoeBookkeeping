@@ -261,7 +261,9 @@ function addSecurityIssue(message, errors, warnings) {
 }
 
 function isWeakJwtSecret(secret) {
-  const value = String(secret || '').trim().toLowerCase()
+  const value = String(secret || '')
+    .trim()
+    .toLowerCase()
   if (!value) return true
   if (value.length < 32) return true
 
@@ -274,7 +276,9 @@ function isWeakJwtSecret(secret) {
 }
 
 function isWeakAdminPassword(password) {
-  const value = String(password || '').trim().toLowerCase()
+  const value = String(password || '')
+    .trim()
+    .toLowerCase()
   if (!value) return false
 
   return [

@@ -60,9 +60,11 @@ export function importData(importPayload, mode = 'merge') {
       )
     : []
   const transactions = Array.isArray(data.transactions)
-    ? ensureImportArray(data.transactions, '交易', IMPORT_LIMITS.transactions).map(
-        normalizeTransaction
-      )
+    ? ensureImportArray(
+        data.transactions,
+        '交易',
+        IMPORT_LIMITS.transactions
+      ).map(normalizeTransaction)
     : []
   const recurringRules = Array.isArray(data.recurring_rules)
     ? ensureImportArray(
@@ -144,7 +146,8 @@ export function importData(importPayload, mode = 'merge') {
   if (transactions.length > 0) {
     for (const transaction of transactions) {
       try {
-        const categoryId = idMap[transaction.category_id] || transaction.category_id
+        const categoryId =
+          idMap[transaction.category_id] || transaction.category_id
         createTransaction({
           type: transaction.type,
           amount: transaction.amount,
@@ -255,7 +258,9 @@ function normalizeCategory(raw) {
     name: toShortText(raw.name, '分类名称', 50),
     type: toType(raw.type, '分类类型'),
     parent_id:
-      raw.parent_id == null ? null : toPositiveInteger(raw.parent_id, '父分类 ID'),
+      raw.parent_id == null
+        ? null
+        : toPositiveInteger(raw.parent_id, '父分类 ID'),
     icon: toOptionalText(raw.icon, '分类图标', 16) || '📁',
     sort_order:
       toOptionalInteger(raw.sort_order, '分类排序', -999999, 999999) ?? 0
@@ -349,7 +354,10 @@ function toDate(value, label) {
   }
 
   const date = new Date(`${text}T00:00:00Z`)
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== text) {
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== text
+  ) {
     throw new Error(`${label}格式无效`)
   }
 
@@ -357,7 +365,9 @@ function toDate(value, label) {
 }
 
 function toCurrency(value) {
-  const text = String(value || 'CNY').trim().toUpperCase()
+  const text = String(value || 'CNY')
+    .trim()
+    .toUpperCase()
   if (!/^[A-Z]{3,10}$/.test(text)) {
     throw new Error('币种格式无效')
   }

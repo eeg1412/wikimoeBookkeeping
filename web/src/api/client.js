@@ -65,8 +65,7 @@ export const api = {
     const filename =
       res.headers
         .get('content-disposition')
-        ?.match(/filename="?([^";]+)"?/)?.[1] ||
-      'export'
+        ?.match(/filename="?([^";]+)"?/)?.[1] || 'export'
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = filename
