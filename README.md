@@ -151,13 +151,21 @@ Vite 开发服务器默认运行在 http://localhost:5173，并代理 /api 到 h
 
 ## Docker
 
-构建并启动：
+Docker 镜像不再在容器内编译前端，而是直接使用仓库中的 web/dist 产物。
+
+先在本地构建前端：
+
+```bash
+npm run build
+```
+
+然后构建并启动：
 
 ```bash
 docker compose up -d --build
 ```
 
-容器默认读取根目录 .env，数据保存在 data 目录，JWT 密钥保存在 keys/jwt.key 并通过 docker-compose 持久化。
+容器默认读取根目录 .env，数据保存在 data 目录，JWT 密钥保存在 keys/jwt.key 并通过 docker-compose 持久化。更新前端代码后，需要重新执行一次本地构建，让最新的 web/dist 一并进入镜像。
 
 ## 安全说明
 
