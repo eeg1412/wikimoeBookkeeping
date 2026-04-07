@@ -90,7 +90,7 @@
             </div>
           </div>
         </div>
-        <div class="mt-3 flex items-start gap-3">
+        <div class="mt-1 flex items-start gap-3">
           <div
             v-for="(group, i) in barGroups"
             :key="i"
@@ -122,8 +122,8 @@ import { computed } from 'vue'
 const props = defineProps({
   type: { type: String, default: 'donut' },
   data: { type: Array, default: () => [] },
-  size: { type: Number, default: 140 },
-  height: { type: Number, default: 160 },
+  size: { type: Number, default: 200 },
+  height: { type: Number, default: 220 },
   stroke: { type: Number, default: 24 },
   centerLabel: String,
   centerValue: String,

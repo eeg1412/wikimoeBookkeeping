@@ -131,11 +131,19 @@
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label class="label">开始日期</label>
-          <input v-model="form.start_date" type="date" class="input" />
+          <DatePicker
+            v-model="form.start_date"
+            :week-start="Number(settingsStore.settings.week_start) || 1"
+          />
         </div>
         <div>
           <label class="label">结束日期（可选）</label>
-          <input v-model="form.end_date" type="date" class="input" />
+          <DatePicker
+            v-model="form.end_date"
+            :week-start="Number(settingsStore.settings.week_start) || 1"
+            clearable
+            placeholder="无结束日期"
+          />
         </div>
       </div>
 
@@ -165,6 +173,7 @@ import { useRecurringStore } from '../stores/recurring.js'
 import { useSettingsStore } from '../stores/settings.js'
 import CategoryPicker from '../components/CategoryPicker.vue'
 import CurrencyInput from '../components/CurrencyInput.vue'
+import DatePicker from '../components/DatePicker.vue'
 
 const route = useRoute()
 const router = useRouter()

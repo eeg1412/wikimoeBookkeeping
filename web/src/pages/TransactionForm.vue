@@ -29,7 +29,10 @@
       <!-- Date -->
       <div>
         <label class="label">日期</label>
-        <input v-model="form.date" type="date" class="input" />
+        <DatePicker
+          v-model="form.date"
+          :week-start="Number(settingsStore.settings.week_start) || 1"
+        />
       </div>
 
       <!-- Note -->
@@ -91,6 +94,7 @@ import CategoryPicker from '../components/CategoryPicker.vue'
 import CategoryQuickCreateDialog from '../components/CategoryQuickCreateDialog.vue'
 import CurrencyInput from '../components/CurrencyInput.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import DatePicker from '../components/DatePicker.vue'
 
 const route = useRoute()
 const router = useRouter()

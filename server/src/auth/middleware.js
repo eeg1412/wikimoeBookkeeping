@@ -2,8 +2,18 @@ import { verifyToken } from './jwt.js'
 import { getJwtSecret } from './key-store.js'
 import { error } from '../utils/response.js'
 
+/** 不需要 access token 的公开路由 */
+const PUBLIC_ROUTES = [
+  { method: 'POST', path: '/api/auth/login' },
+  { method: 'POST', path: '/api/auth/refresh' },
+  { method: 'POST', path: '/api/auth/logout' }
+]
+
 export function authMiddleware(req, res, next) {
-  if (req.pathname === '/api/auth/login' && req.method === 'POST') {
+  // 公开路由直接放行
+  if (
+    PUBLIC_ROUTES.some(r => r.method === req.method && r.path === req.pathname)
+  ) {
     return next()
   }
 

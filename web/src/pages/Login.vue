@@ -30,6 +30,14 @@
             autocomplete="current-password"
           />
         </div>
+        <label class="flex items-center gap-2 select-none cursor-pointer">
+          <input
+            v-model="rememberMe"
+            type="checkbox"
+            class="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+          />
+          <span class="text-sm text-on-surface-secondary">保持登录</span>
+        </label>
         <p v-if="errorMsg" class="text-sm text-red-500">{{ errorMsg }}</p>
         <button type="submit" class="btn-primary w-full" :disabled="loading">
           {{ loading ? '登录中...' : '登录' }}
@@ -49,6 +57,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const username = ref('')
 const password = ref('')
+const rememberMe = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
 
@@ -60,7 +69,7 @@ async function handleLogin() {
   loading.value = true
   errorMsg.value = ''
   try {
-    await authStore.login(username.value, password.value)
+    await authStore.login(username.value, password.value, rememberMe.value)
     router.push('/')
   } catch (e) {
     errorMsg.value = e.message

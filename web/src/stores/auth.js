@@ -4,23 +4,35 @@ import { api } from '../api/client.js'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
+  const refreshToken = ref(localStorage.getItem('refreshToken') || '')
   const username = ref(localStorage.getItem('username') || '')
 
-  async function login(user, pass) {
+  async function login(user, pass, rememberMe = false) {
     const data = await api.post('/auth/login', {
       username: user,
-      password: pass
+      password: pass,
+      rememberMe
     })
     token.value = data.token
+    refreshToken.value = data.refreshToken
     username.value = data.username
     localStorage.setItem('token', data.token)
+    localStorage.setItem('refreshToken', data.refreshToken)
     localStorage.setItem('username', data.username)
   }
 
   function logout() {
+    // 通知服务端废弃 refresh token（忽略失败）
+    if (refreshToken.value) {
+      api
+        .post('/auth/logout', { refreshToken: refreshToken.value })
+        .catch(() => {})
+    }
     token.value = ''
+    refreshToken.value = ''
     username.value = ''
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('username')
     window.location.href = '/login'
   }
@@ -35,5 +47,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, username, login, logout, check }
+  return { token, refreshToken, username, login, logout, check }
 })

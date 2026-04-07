@@ -34,20 +34,25 @@
           <option value="income">收入</option>
           <option value="expense">支出</option>
         </select>
-        <input
+        <DatePicker
           v-model="filterDateFrom"
-          type="date"
-          class="input min-w-0 w-full text-sm sm:w-36"
+          :week-start="Number(settingsStore.settings.week_start) || 1"
+          clearable
+          placeholder="开始日期"
+          input-class="min-w-0 w-full text-sm sm:w-36"
           @change="applyFilter"
         />
         <span
           class="hidden self-center text-on-surface-secondary sm:inline-flex"
           >至</span
         >
-        <input
+        <DatePicker
           v-model="filterDateTo"
-          type="date"
-          class="input min-w-0 w-full text-sm sm:w-36"
+          :week-start="Number(settingsStore.settings.week_start) || 1"
+          clearable
+          align-right
+          placeholder="结束日期"
+          input-class="min-w-0 w-full text-sm sm:w-36"
           @change="applyFilter"
         />
         <button
@@ -191,6 +196,7 @@ import { useSettingsStore } from '../stores/settings.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { getCategoryAccentColor } from '../utils/category-ui.js'
+import DatePicker from '../components/DatePicker.vue'
 
 const store = useTransactionsStore()
 const settingsStore = useSettingsStore()

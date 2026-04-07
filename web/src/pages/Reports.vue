@@ -15,11 +15,12 @@
             {{ p.label }}
           </button>
         </div>
-        <input
+        <PeriodPicker
           v-model="dateStr"
-          type="date"
-          class="input text-sm w-full sm:w-36"
-          @change="loadData"
+          :period="period"
+          :week-start="Number(settingsStore.settings.week_start) || 1"
+          class="w-full sm:w-auto"
+          @update:model-value="loadData"
         />
         <select
           v-model="selectedCurrency"
@@ -158,6 +159,7 @@ import { useSettingsStore } from '../stores/settings.js'
 import StatCard from '../components/StatCard.vue'
 import SimpleChart from '../components/SimpleChart.vue'
 import AppIcon from '../components/AppIcon.vue'
+import PeriodPicker from '../components/PeriodPicker.vue'
 import {
   buildParentCategoryDonutData,
   getCategoryAccentColor
@@ -204,7 +206,7 @@ const barData = computed(() =>
   }))
 )
 
-const trendChartHeight = computed(() => (isCompactViewport.value ? 132 : 180))
+const trendChartHeight = computed(() => (isCompactViewport.value ? 150 : 180))
 
 let compactViewportMediaQuery = null
 
@@ -274,8 +276,9 @@ function getDateRange() {
     case 'day':
       return { start: dateStr.value, end: dateStr.value }
     case 'week': {
+      const ws = Number(settingsStore.settings.week_start) || 1
       const s = new Date(d)
-      s.setDate(s.getDate() - s.getDay() + 1)
+      s.setDate(s.getDate() - ((s.getDay() - ws + 7) % 7))
       const e = new Date(s)
       e.setDate(e.getDate() + 6)
       return { start: fmt(s), end: fmt(e) }
