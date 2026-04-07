@@ -6,12 +6,12 @@
         <select
           v-model="selectedCurrency"
           class="select flex-1 text-sm sm:w-36 sm:flex-none"
-          :disabled="!usedCurrencies.length"
+          :disabled="!filterCurrencies.length"
           @change="loadData"
         >
-          <option v-if="!usedCurrencies.length" value="">暂无币种</option>
+          <option v-if="!filterCurrencies.length" value="">暂无币种</option>
           <option
-            v-for="currency in usedCurrencies"
+            v-for="currency in filterCurrencies"
             :key="currency.code"
             :value="currency.code"
           >
@@ -62,22 +62,58 @@
       />
     </div>
 
-    <!-- Category donut -->
-    <div v-if="categoryData?.categories?.length" class="card">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-bold text-on-surface">支出分类</h2>
-        <router-link to="/reports" class="text-sm text-primary"
-          >查看详情 →</router-link
-        >
+    <!-- Category donuts -->
+    <div
+      v-if="expenseCategoryData || incomeCategoryData"
+      class="grid grid-cols-1 gap-3 xl:grid-cols-2"
+    >
+      <div class="card">
+        <div class="flex items-center justify-between mb-3 gap-3">
+          <h2 class="font-bold text-rose-500">支出分类</h2>
+          <router-link to="/reports" class="text-sm text-primary"
+            >查看详情 →</router-link
+          >
+        </div>
+        <SimpleChart
+          v-if="expenseCategoryData?.categories?.length"
+          type="donut"
+          :data="expenseDonutData"
+          center-label="总支出"
+          :center-value="
+            settingsStore.formatMoney(
+              expenseCategoryData.total,
+              selectedCurrency
+            )
+          "
+        />
+        <div v-else class="text-center py-8 text-on-surface-secondary text-sm">
+          暂无支出分类数据
+        </div>
       </div>
-      <SimpleChart
-        type="donut"
-        :data="donutData"
-        center-label="总支出"
-        :center-value="
-          settingsStore.formatMoney(categoryData.total, selectedCurrency)
-        "
-      />
+
+      <div class="card">
+        <div class="flex items-center justify-between mb-3 gap-3">
+          <h2 class="font-bold text-emerald-500">收入分类</h2>
+          <router-link to="/reports" class="text-sm text-primary"
+            >查看详情 →</router-link
+          >
+        </div>
+        <SimpleChart
+          v-if="incomeCategoryData?.categories?.length"
+          type="donut"
+          :data="incomeDonutData"
+          center-label="总收入"
+          :center-value="
+            settingsStore.formatMoney(
+              incomeCategoryData.total,
+              selectedCurrency
+            )
+          "
+        />
+        <div v-else class="text-center py-8 text-on-surface-secondary text-sm">
+          暂无收入分类数据
+        </div>
+      </div>
     </div>
 
     <!-- Recent transactions -->
@@ -163,10 +199,12 @@ const reportsStore = useReportsStore()
 
 const period = ref('month')
 const selectedCurrency = ref('')
+const hasInitializedSelectedCurrency = ref(false)
 const summary = ref(null)
-const categoryData = ref(null)
+const expenseCategoryData = ref(null)
+const incomeCategoryData = ref(null)
 const recentTxns = ref([])
-const usedCurrencies = computed(() => settingsStore.usedCurrencies)
+const filterCurrencies = computed(() => settingsStore.getFilterCurrencies())
 
 const currencySymbol = computed(() =>
   settingsStore.getCurrencySymbol(
@@ -174,8 +212,12 @@ const currencySymbol = computed(() =>
   )
 )
 
-const donutData = computed(() =>
-  buildParentCategoryDonutData(categoryData.value?.categories || [], 8)
+const expenseDonutData = computed(() =>
+  buildParentCategoryDonutData(expenseCategoryData.value?.categories || [], 8)
+)
+
+const incomeDonutData = computed(() =>
+  buildParentCategoryDonutData(incomeCategoryData.value?.categories || [], 8)
 )
 
 function getTransactionCategoryStyle(transaction) {
@@ -199,33 +241,47 @@ async function loadData() {
     transactionParams.set('currency', selectedCurrency.value)
   }
 
-  const [s, c, t] = await Promise.all([
+  const expenseCategoryParams = new URLSearchParams(reportParams)
+  expenseCategoryParams.set('type', 'expense')
+
+  const incomeCategoryParams = new URLSearchParams(reportParams)
+  incomeCategoryParams.set('type', 'income')
+
+  const [s, expenseCategories, incomeCategories, t] = await Promise.all([
     api.get(`/reports/summary?${reportParams.toString()}`),
-    api.get(`/reports/category?${reportParams.toString()}&type=expense`),
+    api.get(`/reports/category?${expenseCategoryParams.toString()}`),
+    api.get(`/reports/category?${incomeCategoryParams.toString()}`),
     api.get(`/transactions?${transactionParams.toString()}`)
   ])
   summary.value = s
-  categoryData.value = c
+  expenseCategoryData.value = expenseCategories
+  incomeCategoryData.value = incomeCategories
   recentTxns.value = t.list
 }
 
 watch(
-  usedCurrencies,
-  list => {
+  [filterCurrencies, () => settingsStore.settings.default_currency],
+  ([list]) => {
     if (!list.length) {
       selectedCurrency.value = ''
       loadData()
       return
     }
 
-    const nextCurrency = list[0].code
+    const nextCurrency = settingsStore.getPreferredFilterCurrencyCode(list)
 
-    if (!list.some(item => item.code === selectedCurrency.value)) {
+    if (!hasInitializedSelectedCurrency.value) {
+      selectedCurrency.value = nextCurrency
+      hasInitializedSelectedCurrency.value = true
+    } else if (
+      !selectedCurrency.value ||
+      !list.some(item => item.code === selectedCurrency.value)
+    ) {
       selectedCurrency.value = nextCurrency
     }
 
     loadData()
   },
-  { immediate: true }
+  { immediate: true, flush: 'post' }
 )
 </script>

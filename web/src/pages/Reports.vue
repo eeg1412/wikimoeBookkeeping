@@ -25,12 +25,12 @@
         <select
           v-model="selectedCurrency"
           class="select text-sm w-full sm:w-36"
-          :disabled="!usedCurrencies.length"
+          :disabled="!filterCurrencies.length"
           @change="loadData"
         >
-          <option v-if="!usedCurrencies.length" value="">暂无币种</option>
+          <option v-if="!filterCurrencies.length" value="">暂无币种</option>
           <option
-            v-for="currency in usedCurrencies"
+            v-for="currency in filterCurrencies"
             :key="currency.code"
             :value="currency.code"
           >
@@ -61,77 +61,125 @@
       />
     </div>
 
-    <div class="card" v-if="categoryReport">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-bold">
-          <button
-            class="mr-2"
-            :class="
-              catType === 'expense'
-                ? 'text-rose-500'
-                : 'text-on-surface-secondary'
-            "
-            @click="selectCatType('expense')"
-          >
-            支出
-          </button>
-          <button
-            :class="
-              catType === 'income'
-                ? 'text-emerald-500'
-                : 'text-on-surface-secondary'
-            "
-            @click="selectCatType('income')"
-          >
-            收入
-          </button>
-        </h2>
-      </div>
+    <div
+      v-if="expenseCategoryReport || incomeCategoryReport"
+      class="grid grid-cols-1 gap-3 xl:grid-cols-2"
+    >
+      <div class="card">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="font-bold text-rose-500">支出分类</h2>
+          <span class="text-xs text-on-surface-secondary">按分类占比</span>
+        </div>
 
-      <template v-if="categoryReport.categories?.length">
-        <SimpleChart
-          type="donut"
-          :data="donutData"
-          center-label="总计"
-          :center-value="
-            settingsStore.formatMoney(categoryReport.total, selectedCurrency)
-          "
-        />
-        <div class="mt-4 space-y-2">
-          <div
-            v-for="cat in categoryReport.categories"
-            :key="cat.id"
-            class="flex items-start gap-3 text-sm"
-          >
-            <AppIcon
-              :name="cat.icon"
-              :size="20"
-              class="mt-0.5 shrink-0"
-              :style="getCategoryStyle(cat)"
-            />
-            <div class="min-w-0 flex-1">
-              <div class="truncate font-medium" :style="getCategoryStyle(cat)">
-                {{ cat.parent_name ? cat.parent_name + ' / ' : ''
-                }}{{ cat.name }}
-              </div>
-              <div
-                class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm"
-              >
-                <span class="text-on-surface-secondary">{{ cat.count }}笔</span>
-                <span class="font-medium">{{ cat.percentage }}%</span>
-                <span class="font-bold">{{
-                  settingsStore.formatMoney(cat.total, selectedCurrency)
-                }}</span>
+        <template v-if="expenseCategoryReport?.categories?.length">
+          <SimpleChart
+            type="donut"
+            :data="expenseDonutData"
+            center-label="总支出"
+            :center-value="
+              settingsStore.formatMoney(
+                expenseCategoryReport.total,
+                selectedCurrency
+              )
+            "
+          />
+          <div class="mt-4 space-y-2">
+            <div
+              v-for="cat in expenseCategoryReport.categories"
+              :key="cat.id"
+              class="flex items-start gap-3 text-sm"
+            >
+              <AppIcon
+                :name="cat.icon"
+                :size="20"
+                class="mt-0.5 shrink-0"
+                :style="getCategoryStyle(cat)"
+              />
+              <div class="min-w-0 flex-1">
+                <div
+                  class="truncate font-medium"
+                  :style="getCategoryStyle(cat)"
+                >
+                  {{ cat.parent_name ? cat.parent_name + ' / ' : ''
+                  }}{{ cat.name }}
+                </div>
+                <div
+                  class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm"
+                >
+                  <span class="text-on-surface-secondary"
+                    >{{ cat.count }}笔</span
+                  >
+                  <span class="font-medium">{{ cat.percentage }}%</span>
+                  <span class="font-bold">{{
+                    settingsStore.formatMoney(cat.total, selectedCurrency)
+                  }}</span>
+                </div>
               </div>
             </div>
           </div>
+        </template>
+        <p v-else class="text-sm text-on-surface-secondary">
+          当前币种下暂无支出分类数据。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="font-bold text-emerald-500">收入分类</h2>
+          <span class="text-xs text-on-surface-secondary">按分类占比</span>
         </div>
-      </template>
-      <p v-else class="text-sm text-on-surface-secondary">
-        当前币种下暂无{{
-          catType === 'income' ? '收入' : '支出'
-        }}分类数据，可切换顶部类型继续查看。
-      </p>
+
+        <template v-if="incomeCategoryReport?.categories?.length">
+          <SimpleChart
+            type="donut"
+            :data="incomeDonutData"
+            center-label="总收入"
+            :center-value="
+              settingsStore.formatMoney(
+                incomeCategoryReport.total,
+                selectedCurrency
+              )
+            "
+          />
+          <div class="mt-4 space-y-2">
+            <div
+              v-for="cat in incomeCategoryReport.categories"
+              :key="cat.id"
+              class="flex items-start gap-3 text-sm"
+            >
+              <AppIcon
+                :name="cat.icon"
+                :size="20"
+                class="mt-0.5 shrink-0"
+                :style="getCategoryStyle(cat)"
+              />
+              <div class="min-w-0 flex-1">
+                <div
+                  class="truncate font-medium"
+                  :style="getCategoryStyle(cat)"
+                >
+                  {{ cat.parent_name ? cat.parent_name + ' / ' : ''
+                  }}{{ cat.name }}
+                </div>
+                <div
+                  class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm"
+                >
+                  <span class="text-on-surface-secondary"
+                    >{{ cat.count }}笔</span
+                  >
+                  <span class="font-medium">{{ cat.percentage }}%</span>
+                  <span class="font-bold">{{
+                    settingsStore.formatMoney(cat.total, selectedCurrency)
+                  }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+        <p v-else class="text-sm text-on-surface-secondary">
+          当前币种下暂无收入分类数据。
+        </p>
+      </div>
     </div>
 
     <div class="card" v-if="trendData.length">
@@ -171,11 +219,12 @@ const settingsStore = useSettingsStore()
 const period = ref('month')
 const dateStr = ref(new Date().toISOString().split('T')[0])
 const selectedCurrency = ref('')
-const catType = ref('expense')
+const hasInitializedSelectedCurrency = ref(false)
 const isCompactViewport = ref(false)
 
 const summary = ref(null)
-const categoryReport = ref(null)
+const expenseCategoryReport = ref(null)
+const incomeCategoryReport = ref(null)
 const trendData = ref([])
 
 const periods = [
@@ -185,15 +234,22 @@ const periods = [
   { value: 'year', label: '年' }
 ]
 
-const usedCurrencies = computed(() => settingsStore.usedCurrencies)
+const filterCurrencies = computed(() => settingsStore.getFilterCurrencies())
 const currencySymbol = computed(() =>
   settingsStore.getCurrencySymbol(
     selectedCurrency.value || settingsStore.settings.default_currency
   )
 )
 
-const donutData = computed(() =>
-  buildParentCategoryDonutData(categoryReport.value?.categories || [], 10)
+const expenseDonutData = computed(() =>
+  buildParentCategoryDonutData(
+    expenseCategoryReport.value?.categories || [],
+    10
+  )
+)
+
+const incomeDonutData = computed(() =>
+  buildParentCategoryDonutData(incomeCategoryReport.value?.categories || [], 10)
 )
 
 const barData = computed(() =>
@@ -219,11 +275,6 @@ function selectPeriod(nextPeriod) {
   loadData()
 }
 
-function selectCatType(type) {
-  catType.value = type
-  loadCategory()
-}
-
 function getCategoryStyle(category) {
   const color = getCategoryAccentColor(category)
   return color ? { color } : undefined
@@ -231,7 +282,8 @@ function getCategoryStyle(category) {
 
 async function loadData() {
   summary.value = null
-  categoryReport.value = null
+  expenseCategoryReport.value = null
+  incomeCategoryReport.value = null
   trendData.value = []
 
   const params = {
@@ -243,18 +295,23 @@ async function loadData() {
   summary.value = await reportsStore
     .fetchSummary(params)
     .then(() => reportsStore.summary)
-  await loadCategory()
-  await loadTrend()
+  await Promise.all([loadCategories(), loadTrend()])
 }
 
-async function loadCategory() {
-  await reportsStore.fetchCategoryReport({
+async function loadCategories() {
+  const baseParams = {
     period: period.value,
     date: dateStr.value,
-    type: catType.value,
     currency: selectedCurrency.value || undefined
-  })
-  categoryReport.value = reportsStore.categoryReport
+  }
+
+  const [expenseData, incomeData] = await Promise.all([
+    reportsStore.fetchCategoryReport({ ...baseParams, type: 'expense' }),
+    reportsStore.fetchCategoryReport({ ...baseParams, type: 'income' })
+  ])
+
+  expenseCategoryReport.value = expenseData
+  incomeCategoryReport.value = incomeData
 }
 
 async function loadTrend() {
@@ -300,23 +357,29 @@ function fmt(date) {
 }
 
 watch(
-  usedCurrencies,
-  list => {
+  [filterCurrencies, () => settingsStore.settings.default_currency],
+  ([list]) => {
     if (!list.length) {
       selectedCurrency.value = ''
       loadData()
       return
     }
 
-    const nextCurrency = list[0].code
+    const nextCurrency = settingsStore.getPreferredFilterCurrencyCode(list)
 
-    if (!list.some(item => item.code === selectedCurrency.value)) {
+    if (!hasInitializedSelectedCurrency.value) {
+      selectedCurrency.value = nextCurrency
+      hasInitializedSelectedCurrency.value = true
+    } else if (
+      !selectedCurrency.value ||
+      !list.some(item => item.code === selectedCurrency.value)
+    ) {
       selectedCurrency.value = nextCurrency
     }
 
     loadData()
   },
-  { immediate: true }
+  { immediate: true, flush: 'post' }
 )
 
 onMounted(() => {

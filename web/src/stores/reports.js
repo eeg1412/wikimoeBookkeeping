@@ -26,6 +26,7 @@ export const useReportsStore = defineStore('reports', () => {
   async function fetchCategoryReport(params) {
     const qs = toQs(params)
     categoryReport.value = await api.get(`/reports/category?${qs}`)
+    return categoryReport.value
   }
 
   function toQs(obj) {

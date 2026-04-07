@@ -45,7 +45,7 @@
               class="border-b border-border last:border-0"
             >
               <td class="px-4 py-2.5 text-on-surface whitespace-nowrap">
-                {{ item.created_at }}
+                {{ item.created_at_local }}
               </td>
               <td class="px-4 py-2.5 text-on-surface font-mono text-xs">
                 {{ item.ip }}
@@ -103,6 +103,50 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
+const browserDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false
+})
+
+function formatLoginAttemptTime(value) {
+  if (!value) {
+    return '-'
+  }
+
+  const rawValue = String(value).trim()
+  const sqliteDateTimeMatch = rawValue.match(
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/
+  )
+
+  let date = null
+
+  if (sqliteDateTimeMatch) {
+    const [, year, month, day, hour, minute, second] = sqliteDateTimeMatch
+    date = new Date(
+      Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour),
+        Number(minute),
+        Number(second)
+      )
+    )
+  } else {
+    date = new Date(rawValue)
+  }
+
+  if (Number.isNaN(date.getTime())) {
+    return rawValue
+  }
+
+  return browserDateTimeFormatter.format(date)
+}
 
 async function fetchAttempts() {
   loading.value = true
@@ -110,7 +154,10 @@ async function fetchAttempts() {
     const data = await api.get(
       `/auth/login-attempts?page=${page.value}&pageSize=${pageSize.value}`
     )
-    list.value = data.list
+    list.value = data.list.map(item => ({
+      ...item,
+      created_at_local: formatLoginAttemptTime(item.created_at)
+    }))
     total.value = data.total
     page.value = data.page
     pageSize.value = data.pageSize

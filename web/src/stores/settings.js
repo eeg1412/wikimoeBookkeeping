@@ -68,6 +68,47 @@ export const useSettingsStore = defineStore('settings', () => {
     return c ? c.symbol : code
   }
 
+  function getFilterCurrencies(source = usedCurrencies.value) {
+    const list = Array.isArray(source) ? [...source] : []
+    const defaultCurrencyCode = settings.value.default_currency
+
+    if (!defaultCurrencyCode) {
+      return list
+    }
+
+    if (list.some(currency => currency.code === defaultCurrencyCode)) {
+      return list
+    }
+
+    const defaultCurrency =
+      currencies.value.find(
+        currency => currency.code === defaultCurrencyCode
+      ) ||
+      usedCurrencies.value.find(
+        currency => currency.code === defaultCurrencyCode
+      )
+
+    if (!defaultCurrency) {
+      return list
+    }
+
+    return [defaultCurrency, ...list]
+  }
+
+  function getPreferredFilterCurrencyCode(source = usedCurrencies.value) {
+    const list = getFilterCurrencies(source)
+
+    if (!list.length) {
+      return ''
+    }
+
+    return list.some(
+      currency => currency.code === settings.value.default_currency
+    )
+      ? settings.value.default_currency
+      : list[0].code
+  }
+
   function formatMoney(amount, currencyCode) {
     const sym = getCurrencySymbol(
       currencyCode || settings.value.default_currency
@@ -94,6 +135,8 @@ export const useSettingsStore = defineStore('settings', () => {
     fetchUsedCurrencies,
     update,
     applyTheme,
+    getFilterCurrencies,
+    getPreferredFilterCurrencyCode,
     getCurrencySymbol,
     formatMoney
   }

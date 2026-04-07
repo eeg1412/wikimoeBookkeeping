@@ -13,12 +13,12 @@
         <select
           v-model="filterCurrency"
           class="select min-w-0 w-full text-sm sm:w-32"
-          :disabled="!usedCurrencies.length"
+          :disabled="!filterCurrencies.length"
           @change="applyFilter"
         >
-          <option v-if="!usedCurrencies.length" value="">暂无币种</option>
+          <option v-if="!filterCurrencies.length" value="">暂无币种</option>
           <option
-            v-for="currency in usedCurrencies"
+            v-for="currency in filterCurrencies"
             :key="currency.code"
             :value="currency.code"
           >
@@ -232,7 +232,8 @@ const filterType = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
 const filterCurrency = ref('')
-const usedCurrencies = computed(() => settingsStore.usedCurrencies)
+const hasInitializedFilterCurrency = ref(false)
+const filterCurrencies = computed(() => settingsStore.getFilterCurrencies())
 const activeCurrencyCode = computed(
   () => filterCurrency.value || settingsStore.settings.default_currency
 )
@@ -277,22 +278,28 @@ function changePage(p) {
 }
 
 watch(
-  usedCurrencies,
-  list => {
+  [filterCurrencies, () => settingsStore.settings.default_currency],
+  ([list]) => {
     if (!list.length) {
       filterCurrency.value = ''
       applyFilter()
       return
     }
 
-    const nextCurrency = list[0].code
+    const nextCurrency = settingsStore.getPreferredFilterCurrencyCode(list)
 
-    if (!list.some(item => item.code === filterCurrency.value)) {
+    if (!hasInitializedFilterCurrency.value) {
+      filterCurrency.value = nextCurrency
+      hasInitializedFilterCurrency.value = true
+    } else if (
+      !filterCurrency.value ||
+      !list.some(item => item.code === filterCurrency.value)
+    ) {
       filterCurrency.value = nextCurrency
     }
 
     applyFilter()
   },
-  { immediate: true }
+  { immediate: true, flush: 'post' }
 )
 </script>
