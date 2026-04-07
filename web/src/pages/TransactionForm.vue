@@ -1,0 +1,170 @@
+<template>
+  <div class="space-y-6">
+    <div class="flex items-center gap-3">
+      <button class="btn-ghost btn-sm" @click="$router.back()">← 返回</button>
+      <h1 class="page-title">{{ isEdit ? '编辑账目' : '记一笔' }}</h1>
+    </div>
+
+    <form @submit.prevent="handleSubmit" class="space-y-5">
+      <!-- Category picker -->
+      <CategoryPicker
+        v-model="form.category_id"
+        :type="form.type"
+        show-type
+        label="选择分类"
+        @update:type="form.type = $event"
+      />
+
+      <!-- Amount + Currency -->
+      <CurrencyInput
+        v-model="form.amount"
+        :currency="form.currency"
+        :exchange-rate="form.exchange_rate"
+        @update:currency="form.currency = $event"
+        @update:exchange-rate="form.exchange_rate = $event"
+      />
+
+      <!-- Date -->
+      <div>
+        <label class="label">日期</label>
+        <input v-model="form.date" type="date" class="input" />
+      </div>
+
+      <!-- Note -->
+      <div>
+        <label class="label">备注</label>
+        <input
+          v-model="form.note"
+          class="input"
+          placeholder="可选备注"
+          maxlength="200"
+        />
+      </div>
+
+      <p v-if="errorMsg" class="text-sm text-red-500">{{ errorMsg }}</p>
+
+      <div class="flex gap-3">
+        <button type="submit" class="btn-primary flex-1" :disabled="saving">
+          {{ saving ? '保存中...' : '保存' }}
+        </button>
+        <button
+          v-if="isEdit"
+          type="button"
+          class="btn-danger"
+          @click="showDelete = true"
+        >
+          删除
+        </button>
+      </div>
+    </form>
+
+    <ConfirmDialog
+      :show="showDelete"
+      title="删除账目"
+      message="确定要删除这条账目记录吗？"
+      confirm-text="删除"
+      danger
+      @confirm="handleDelete"
+      @cancel="showDelete = false"
+    />
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useTransactionsStore } from '../stores/transactions.js'
+import { useSettingsStore } from '../stores/settings.js'
+import CategoryPicker from '../components/CategoryPicker.vue'
+import CurrencyInput from '../components/CurrencyInput.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+
+const route = useRoute()
+const router = useRouter()
+const store = useTransactionsStore()
+const settingsStore = useSettingsStore()
+
+const isEdit = computed(() => !!route.params.id)
+const saving = ref(false)
+const errorMsg = ref('')
+const showDelete = ref(false)
+
+const form = ref({
+  type: 'expense',
+  amount: null,
+  currency: settingsStore.settings.default_currency,
+  exchange_rate: 1,
+  category_id: null,
+  date: new Date().toISOString().split('T')[0],
+  note: ''
+})
+
+async function loadTransaction() {
+  if (!isEdit.value) return
+  try {
+    const data = await (
+      await fetch(`/api/transactions`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      })
+    ).json()
+    // Fetch the specific transaction
+    const res = await fetch(`/api/transactions?page=1&pageSize=1`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+    // Use api client instead
+    const { api } = await import('../api/client.js')
+    const allData = await api.get(`/transactions?pageSize=9999`)
+    const txn = allData.list.find(t => t.id === Number(route.params.id))
+    if (txn) {
+      form.value = {
+        type: txn.type,
+        amount: txn.amount,
+        currency: txn.currency,
+        exchange_rate: txn.exchange_rate,
+        category_id: txn.category_id,
+        date: txn.date,
+        note: txn.note || ''
+      }
+    }
+  } catch (e) {
+    errorMsg.value = '加载失败: ' + e.message
+  }
+}
+
+async function handleSubmit() {
+  if (!form.value.category_id) {
+    errorMsg.value = '请选择分类'
+    return
+  }
+  if (!form.value.amount || form.value.amount <= 0) {
+    errorMsg.value = '请输入有效金额'
+    return
+  }
+  saving.value = true
+  errorMsg.value = ''
+  try {
+    if (isEdit.value) {
+      await store.update(Number(route.params.id), form.value)
+    } else {
+      await store.create(form.value)
+    }
+    router.back()
+  } catch (e) {
+    errorMsg.value = e.message
+  } finally {
+    saving.value = false
+  }
+}
+
+async function handleDelete() {
+  try {
+    await store.remove(Number(route.params.id))
+    router.replace('/transactions')
+  } catch (e) {
+    errorMsg.value = e.message
+  }
+  showDelete.value = false
+}
+
+onMounted(loadTransaction)
+</script>

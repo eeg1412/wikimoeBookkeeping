@@ -1,0 +1,128 @@
+<template>
+  <div class="space-y-4">
+    <h1 class="page-title">登录日志</h1>
+
+    <div v-if="loading" class="text-center py-12 text-on-surface-secondary">
+      加载中...
+    </div>
+    <div
+      v-else-if="!list.length"
+      class="text-center py-12 text-on-surface-secondary"
+    >
+      暂无记录
+    </div>
+    <div v-else class="card !p-0 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-border bg-surface-secondary/50">
+              <th
+                class="text-left px-4 py-2.5 font-medium text-on-surface-secondary"
+              >
+                时间
+              </th>
+              <th
+                class="text-left px-4 py-2.5 font-medium text-on-surface-secondary"
+              >
+                IP
+              </th>
+              <th
+                class="text-left px-4 py-2.5 font-medium text-on-surface-secondary"
+              >
+                用户名
+              </th>
+              <th
+                class="text-left px-4 py-2.5 font-medium text-on-surface-secondary"
+              >
+                结果
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in list"
+              :key="item.id"
+              class="border-b border-border last:border-0"
+            >
+              <td class="px-4 py-2.5 text-on-surface whitespace-nowrap">
+                {{ item.created_at }}
+              </td>
+              <td class="px-4 py-2.5 text-on-surface font-mono text-xs">
+                {{ item.ip }}
+              </td>
+              <td class="px-4 py-2.5 text-on-surface">
+                {{ item.username || '-' }}
+              </td>
+              <td class="px-4 py-2.5">
+                <span
+                  class="badge text-xs"
+                  :class="
+                    item.success
+                      ? 'badge-income'
+                      : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                  "
+                >
+                  {{ item.success ? '成功' : '失败' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="total > pageSize" class="flex justify-center gap-2 pt-2">
+      <button
+        class="btn-secondary btn-sm"
+        :disabled="page <= 1"
+        @click="changePage(page - 1)"
+      >
+        上一页
+      </button>
+      <span class="text-sm text-on-surface-secondary self-center">
+        {{ page }} / {{ Math.ceil(total / pageSize) }}
+      </span>
+      <button
+        class="btn-secondary btn-sm"
+        :disabled="page >= Math.ceil(total / pageSize)"
+        @click="changePage(page + 1)"
+      >
+        下一页
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { api } from '../api/client.js'
+
+const list = ref([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
+const loading = ref(false)
+
+async function fetchAttempts() {
+  loading.value = true
+  try {
+    const data = await api.get(
+      `/auth/login-attempts?page=${page.value}&pageSize=${pageSize.value}`
+    )
+    list.value = data.list
+    total.value = data.total
+    page.value = data.page
+    pageSize.value = data.pageSize
+  } finally {
+    loading.value = false
+  }
+}
+
+function changePage(p) {
+  page.value = p
+  fetchAttempts()
+}
+
+onMounted(fetchAttempts)
+</script>
