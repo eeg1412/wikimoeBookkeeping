@@ -1,5 +1,5 @@
 # Build frontend
-FROM node:24-alpine AS frontend
+FROM cgr.dev/chainguard/node:latest-dev AS frontend
 WORKDIR /app/web
 COPY web/package*.json ./
 RUN npm ci
@@ -7,7 +7,7 @@ COPY web/ ./
 RUN npm run build
 
 # Production
-FROM node:24-alpine
+FROM cgr.dev/chainguard/node:latest-dev
 ENV NODE_ENV=production
 WORKDIR /app
 COPY package.json ./
