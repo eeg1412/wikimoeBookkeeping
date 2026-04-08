@@ -137,10 +137,6 @@ const donutTotal = computed(() =>
 
 const hasDonutData = computed(() => donutTotal.value > 0)
 
-const hasMultipleDonutSegments = computed(
-  () => normalizedDonutData.value.filter(item => item.value > 0).length > 1
-)
-
 const legendItems = computed(() =>
   normalizedDonutData.value.map(item => {
     const rawPercentage = Number(
@@ -345,13 +341,13 @@ const donutOptions = computed(() => {
         radius: ['62%', '84%'],
         center: ['50%', '50%'],
         avoidLabelOverlap: true,
-        padAngle: hasMultipleDonutSegments.value ? 2 : 0,
+        padAngle: 0,
         selectedMode: false,
         selectedOffset: 0,
         stillShowZeroSum: false,
         itemStyle: {
           borderColor: theme.surfaceColor,
-          borderWidth: hasMultipleDonutSegments.value ? 1 : 0,
+          borderWidth: 0,
           borderRadius: 0
         },
         label: { show: false },

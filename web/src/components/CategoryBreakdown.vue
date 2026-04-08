@@ -235,22 +235,13 @@ function buildCategoryGroups(categories) {
     currentGroup.color = currentGroup.color || getCategoryAccentColor(category)
 
     if (category.parent_id) {
-      const itemPercentage = Number(
-        category.percentage ??
-          (totalAmount > 0
-            ? ((Number(category.total) || 0) / totalAmount) * 100
-            : 0)
-      )
-
       currentGroup.items.push({
         id: category.id,
         name: category.name,
         icon: category.icon,
         total: Number(category.total) || 0,
         count: Number(category.count) || 0,
-        color: getCategoryAccentColor(category),
-        percentageText: itemPercentage.toFixed(1),
-        percentageValue: clampPercentage(itemPercentage)
+        color: getCategoryAccentColor(category)
       })
     }
 
@@ -263,12 +254,24 @@ function buildCategoryGroups(categories) {
     .map(group => {
       const percentageValue =
         totalAmount > 0 ? (group.total / totalAmount) * 100 : 0
+      const items = group.items
+        .sort((left, right) => right.total - left.total)
+        .map(item => {
+          const itemPercentage =
+            group.total > 0 ? (item.total / group.total) * 100 : 0
+
+          return {
+            ...item,
+            percentageText: itemPercentage.toFixed(1),
+            percentageValue: clampPercentage(itemPercentage)
+          }
+        })
 
       return {
         ...group,
         percentageText: percentageValue.toFixed(1),
         percentageValue: clampPercentage(percentageValue),
-        items: group.items.sort((left, right) => right.total - left.total)
+        items
       }
     })
 }
