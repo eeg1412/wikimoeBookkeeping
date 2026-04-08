@@ -215,7 +215,7 @@
                         {{
                           group.items.length
                             ? `含${group.items.length}个小类`
-                            : '无小类'
+                            : ''
                         }}
                       </span>
                       <button
@@ -383,7 +383,7 @@
                         {{
                           group.items.length
                             ? `含${group.items.length}个小类`
-                            : '无小类'
+                            : ''
                         }}
                       </span>
                       <button
