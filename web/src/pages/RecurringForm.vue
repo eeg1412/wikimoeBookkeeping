@@ -173,6 +173,7 @@ import { useToastStore } from '../stores/toast.js'
 import CategoryPicker from '../components/CategoryPicker.vue'
 import CurrencyInput from '../components/CurrencyInput.vue'
 import DatePicker from '../components/DatePicker.vue'
+import { getLocalToday } from '../utils/date.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -213,7 +214,7 @@ const form = ref({
   hour: 8,
   minute: 0,
   timezone: settingsStore.settings.timezone || 'Asia/Shanghai',
-  start_date: new Date().toISOString().split('T')[0],
+  start_date: getLocalToday(),
   end_date: '',
   note: ''
 })

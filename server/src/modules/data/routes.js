@@ -34,4 +34,13 @@ export function registerDataRoutes(router) {
       error(res, e.message)
     }
   })
+
+  router.post('/api/data/batch-import-transactions', (req, res) => {
+    try {
+      const result = service.batchImportTransactions(req.body)
+      json(res, result)
+    } catch (e) {
+      error(res, e.message)
+    }
+  })
 }

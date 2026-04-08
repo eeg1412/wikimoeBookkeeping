@@ -11,9 +11,9 @@
         <div
           v-for="toast in toastStore.toasts"
           :key="toast.id"
-          class="pointer-events-auto overflow-hidden rounded-2xl border border-border bg-surface/95 p-3 shadow-2xl backdrop-blur"
+          class="pointer-events-auto overflow-hidden rounded-2xl border border-border bg-surface/95 shadow-2xl backdrop-blur"
         >
-          <div class="flex items-start gap-3">
+          <div class="flex items-start gap-3 p-3">
             <span
               class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
               :class="getIndicatorClass(toast.type)"
@@ -33,6 +33,17 @@
             >
               <AppIcon name="close" :size="16" />
             </button>
+          </div>
+          <div
+            v-if="toast.duration > 0"
+            class="h-0.5 w-full"
+            :class="getProgressBgClass(toast.type)"
+          >
+            <div
+              class="h-full"
+              :class="getProgressBarClass(toast.type)"
+              :style="{ animationDuration: toast.duration + 'ms' }"
+            ></div>
           </div>
         </div>
       </TransitionGroup>
@@ -56,9 +67,44 @@ function getIndicatorClass(type) {
       return 'bg-primary'
   }
 }
+
+function getProgressBgClass(type) {
+  switch (type) {
+    case 'success':
+      return 'bg-emerald-500/10'
+    case 'error':
+      return 'bg-rose-500/10'
+    default:
+      return 'bg-primary/10'
+  }
+}
+
+function getProgressBarClass(type) {
+  switch (type) {
+    case 'success':
+      return 'toast-progress bg-emerald-500'
+    case 'error':
+      return 'toast-progress bg-rose-500'
+    default:
+      return 'toast-progress bg-primary'
+  }
+}
 </script>
 
 <style scoped>
+.toast-progress {
+  animation: toast-shrink linear forwards;
+}
+
+@keyframes toast-shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
 .toast-enter-active,
 .toast-leave-active {
   transition:

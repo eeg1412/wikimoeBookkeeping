@@ -689,3 +689,141 @@ function claimId(preferredId, usedIds) {
 
   return preferredId
 }
+
+export function batchImportTransactions(payload) {
+  const db = getDb()
+
+  assertPlainObject(payload, '导入数据')
+  const rawTransactions = payload.transactions
+  if (!Array.isArray(rawTransactions)) {
+    throw new Error('transactions 必须是数组')
+  }
+
+  if (rawTransactions.length === 0) {
+    throw new Error('没有可导入的账目')
+  }
+
+  if (rawTransactions.length > IMPORT_LIMITS.transactions) {
+    throw new Error(`账目数量超过限制（最大 ${IMPORT_LIMITS.transactions} 条）`)
+  }
+
+  const allCategories = db
+    .prepare('SELECT * FROM categories WHERE is_deleted = 0')
+    .all()
+
+  const errors = []
+  const validTransactions = []
+
+  for (let i = 0; i < rawTransactions.length; i++) {
+    try {
+      const raw = rawTransactions[i]
+      assertPlainObject(raw, `第 ${i + 1} 条账目`)
+
+      const type = toType(raw.type, `第 ${i + 1} 条账目类型`)
+      const amount = toPositiveNumber(raw.amount, `第 ${i + 1} 条账目金额`)
+      const currency = toCurrency(raw.currency)
+      const date = toDate(raw.date, `第 ${i + 1} 条账目日期`)
+      const note = toOptionalText(raw.note, `第 ${i + 1} 条账目备注`, 500) || ''
+      const categoryName = String(raw.category_name || '').trim()
+      const parentCategoryName = String(raw.parent_category_name || '').trim()
+
+      if (!categoryName && !raw.category_id) {
+        throw new Error(
+          `第 ${i + 1} 条账目：category_id 和 category_name 至少填一个`
+        )
+      }
+
+      let category
+      if (raw.category_id) {
+        const cid = Number(raw.category_id)
+        if (!Number.isInteger(cid) || cid <= 0) {
+          throw new Error(`第 ${i + 1} 条账目：category_id 必须是正整数`)
+        }
+        category = allCategories.find(c => c.id === cid)
+        if (!category) {
+          throw new Error(`第 ${i + 1} 条账目：找不到 ID 为 ${cid} 的分类`)
+        }
+        if (category.type !== type) {
+          throw new Error(
+            `第 ${i + 1} 条账目：分类 "${category.name}"(ID:${cid}) 类型为 ${category.type}，与账目类型 ${type} 不一致`
+          )
+        }
+      } else if (parentCategoryName) {
+        const parent = allCategories.find(
+          c => c.name === parentCategoryName && c.type === type && !c.parent_id
+        )
+        if (!parent) {
+          throw new Error(
+            `第 ${i + 1} 条账目：找不到${type === 'income' ? '收入' : '支出'}父分类 "${parentCategoryName}"`
+          )
+        }
+        category = allCategories.find(
+          c =>
+            c.name === categoryName &&
+            c.type === type &&
+            c.parent_id === parent.id
+        )
+        if (!category) {
+          throw new Error(
+            `第 ${i + 1} 条账目：在 "${parentCategoryName}" 下找不到子分类 "${categoryName}"`
+          )
+        }
+      } else {
+        const candidates = allCategories.filter(
+          c => c.name === categoryName && c.type === type
+        )
+        if (candidates.length === 0) {
+          throw new Error(
+            `第 ${i + 1} 条账目：找不到${type === 'income' ? '收入' : '支出'}分类 "${categoryName}"`
+          )
+        }
+        if (candidates.length > 1) {
+          throw new Error(
+            `第 ${i + 1} 条账目：存在多个同名分类 "${categoryName}"，请指定 parent_category_name 以区分`
+          )
+        }
+        category = candidates[0]
+      }
+
+      validTransactions.push({
+        type,
+        amount,
+        currency,
+        category_id: category.id,
+        note,
+        date,
+        source: 'import'
+      })
+    } catch (e) {
+      errors.push(e.message)
+    }
+  }
+
+  if (errors.length > 0) {
+    return { success: false, errors, imported: 0 }
+  }
+
+  let imported = 0
+  runInTransaction(db, () => {
+    const stmt = db.prepare(
+      `INSERT INTO transactions (type, amount, currency, category_id, note, source, date)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    for (const t of validTransactions) {
+      stmt.run(
+        t.type,
+        t.amount,
+        t.currency,
+        t.category_id,
+        t.note,
+        t.source,
+        t.date
+      )
+      imported++
+    }
+  })
+
+  refreshUsedCurrenciesCache()
+
+  return { success: true, errors: [], imported }
+}

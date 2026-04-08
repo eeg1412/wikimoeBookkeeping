@@ -20,92 +20,95 @@
       </svg>
     </button>
 
-    <div
-      v-if="panelOpen"
-      class="absolute top-full mt-1 z-50 bg-surface border border-border rounded-xl shadow-lg p-3 min-w-[280px]"
-      :class="alignRight ? 'right-0' : 'left-0'"
-    >
-      <div class="flex items-center justify-between mb-2">
-        <button
-          type="button"
-          class="btn-sm btn-secondary px-2"
-          @click="navMonth(-1)"
-        >
-          ◀
-        </button>
-        <div class="flex items-center gap-1">
+    <Teleport to="body">
+      <div
+        v-if="panelOpen"
+        class="fixed z-[9999] bg-surface border border-border rounded-xl shadow-lg p-3 min-w-[280px]"
+        :style="panelStyle"
+        ref="panelEl"
+      >
+        <div class="flex items-center justify-between mb-2">
           <button
             type="button"
-            class="btn-sm btn-ghost text-sm font-bold"
-            @click="openYearMonth"
-            v-if="!showYearMonth"
+            class="btn-sm btn-secondary px-2"
+            @click="navMonth(-1)"
           >
-            {{ viewYear }}年{{ viewMonth + 1 }}月
+            ◀
           </button>
-          <template v-if="showYearMonth">
-            <select
-              :value="viewYear"
-              class="select text-sm py-1 px-2 w-20"
-              @change="onChangeYear"
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              class="btn-sm btn-ghost text-sm font-bold"
+              @click="openYearMonth"
+              v-if="!showYearMonth"
             >
-              <option v-for="y in yearOptions" :key="y" :value="y">
-                {{ y }}
-              </option>
-            </select>
-            <select
-              :value="viewMonth"
-              class="select text-sm py-1 px-2 w-16"
-              @change="onChangeMonth"
-            >
-              <option v-for="m in 12" :key="m - 1" :value="m - 1">
-                {{ m }}月
-              </option>
-            </select>
-          </template>
+              {{ viewYear }}年{{ viewMonth + 1 }}月
+            </button>
+            <template v-if="showYearMonth">
+              <select
+                :value="viewYear"
+                class="select text-sm py-1 px-2 w-20"
+                @change="onChangeYear"
+              >
+                <option v-for="y in yearOptions" :key="y" :value="y">
+                  {{ y }}
+                </option>
+              </select>
+              <select
+                :value="viewMonth"
+                class="select text-sm py-1 px-2 w-16"
+                @change="onChangeMonth"
+              >
+                <option v-for="m in 12" :key="m - 1" :value="m - 1">
+                  {{ m }}月
+                </option>
+              </select>
+            </template>
+          </div>
+          <button
+            type="button"
+            class="btn-sm btn-secondary px-2"
+            @click="navMonth(1)"
+          >
+            ▶
+          </button>
         </div>
-        <button
-          type="button"
-          class="btn-sm btn-secondary px-2"
-          @click="navMonth(1)"
-        >
-          ▶
-        </button>
-      </div>
 
-      <div
-        class="grid grid-cols-7 text-center text-xs text-on-surface-secondary mb-1"
-      >
-        <span v-for="wd in weekdayLabels" :key="wd">{{ wd }}</span>
-      </div>
-
-      <div class="grid grid-cols-7 text-center text-sm gap-y-0.5">
-        <button
-          v-for="(cell, i) in calendarCells"
-          :key="i"
-          type="button"
-          class="rounded-md py-1 transition-colors"
-          :class="cellClass(cell)"
-          @click="selectDate(cell)"
+        <div
+          class="grid grid-cols-7 text-center text-xs text-on-surface-secondary mb-1"
         >
-          {{ cell.day }}
-        </button>
-      </div>
+          <span v-for="wd in weekdayLabels" :key="wd">{{ wd }}</span>
+        </div>
 
-      <div v-if="clearable && modelValue" class="mt-2 text-center">
-        <button
-          type="button"
-          class="btn-sm btn-ghost text-xs"
-          @click="clearDate"
-        >
-          清除日期
-        </button>
+        <div class="grid grid-cols-7 text-center text-sm gap-y-0.5">
+          <button
+            v-for="(cell, ci) in calendarCells"
+            :key="ci"
+            type="button"
+            class="rounded-md py-1 transition-colors"
+            :class="cellClass(cell)"
+            @click="selectDate(cell)"
+          >
+            {{ cell.day }}
+          </button>
+        </div>
+
+        <div v-if="clearable && modelValue" class="mt-2 text-center">
+          <button
+            type="button"
+            class="btn-sm btn-ghost text-xs"
+            @click="clearDate"
+          >
+            清除日期
+          </button>
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -119,10 +122,40 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const rootEl = ref(null)
+const panelEl = ref(null)
 const panelOpen = ref(false)
 const showYearMonth = ref(false)
 const viewYear = ref(new Date().getFullYear())
 const viewMonth = ref(new Date().getMonth())
+const panelStyle = ref({})
+
+function updatePanelPosition() {
+  if (!rootEl.value) return
+  const rect = rootEl.value.getBoundingClientRect()
+  const panelHeight = 340
+  const panelWidth = 280
+  const spaceBelow = window.innerHeight - rect.bottom
+  const spaceRight = window.innerWidth - rect.left
+
+  let top, left
+  if (spaceBelow >= panelHeight + 4) {
+    top = rect.bottom + 4
+  } else {
+    top = rect.top - panelHeight - 4
+  }
+  if (props.alignRight || spaceRight < panelWidth) {
+    left = rect.right - panelWidth
+  } else {
+    left = rect.left
+  }
+  top = Math.max(4, Math.min(top, window.innerHeight - panelHeight - 4))
+  left = Math.max(4, Math.min(left, window.innerWidth - panelWidth - 4))
+
+  panelStyle.value = {
+    top: top + 'px',
+    left: left + 'px'
+  }
+}
 
 const displayValue = computed(() => {
   if (!props.modelValue) return ''
@@ -194,6 +227,7 @@ function togglePanel() {
       viewYear.value = new Date().getFullYear()
       viewMonth.value = new Date().getMonth()
     }
+    nextTick(() => updatePanelPosition())
   }
 }
 
@@ -249,7 +283,11 @@ function clearDate() {
 }
 
 function handleClickOutside(e) {
-  if (rootEl.value && !rootEl.value.contains(e.target)) {
+  if (
+    rootEl.value &&
+    !rootEl.value.contains(e.target) &&
+    (!panelEl.value || !panelEl.value.contains(e.target))
+  ) {
     panelOpen.value = false
   }
 }

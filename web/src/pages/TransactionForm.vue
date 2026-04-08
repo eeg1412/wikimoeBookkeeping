@@ -94,6 +94,7 @@ import CategoryQuickCreateDialog from '../components/CategoryQuickCreateDialog.v
 import CurrencyInput from '../components/CurrencyInput.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import DatePicker from '../components/DatePicker.vue'
+import { getLocalToday } from '../utils/date.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -112,7 +113,7 @@ const form = ref({
   amount: null,
   currency: settingsStore.settings.default_currency,
   category_id: null,
-  date: new Date().toISOString().split('T')[0],
+  date: getLocalToday(),
   note: ''
 })
 

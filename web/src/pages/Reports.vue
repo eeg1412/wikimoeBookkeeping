@@ -70,7 +70,7 @@
       />
     </div>
 
-    <div class="card">
+    <!-- <div class="card">
       <div class="mb-3 flex items-center justify-between gap-3">
         <h2 class="font-bold text-on-surface">最近账目</h2>
         <router-link
@@ -126,7 +126,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <div
       v-if="expenseCategoryReport || incomeCategoryReport"
@@ -537,6 +537,7 @@ import StatCard from '../components/StatCard.vue'
 import SimpleChart from '../components/SimpleChart.vue'
 import AppIcon from '../components/AppIcon.vue'
 import PeriodPicker from '../components/PeriodPicker.vue'
+import { getLocalToday } from '../utils/date.js'
 import {
   buildParentCategoryDonutData,
   getCategoryAccentColor
@@ -546,7 +547,7 @@ const reportsStore = useReportsStore()
 const settingsStore = useSettingsStore()
 
 const period = ref('month')
-const dateStr = ref(new Date().toISOString().split('T')[0])
+const dateStr = ref(getLocalToday())
 const selectedCurrency = ref('')
 const hasInitializedSelectedCurrency = ref(false)
 const isCompactViewport = ref(false)
@@ -789,7 +790,8 @@ async function loadData() {
   summary.value = await reportsStore
     .fetchSummary(params)
     .then(() => reportsStore.summary)
-  await Promise.all([loadCategories(), loadTrend(), loadRecentTransactions()])
+  // loadRecentTransactions() 暂时不加载最近账目，避免接口响应过慢影响体验
+  await Promise.all([loadCategories(), loadTrend()])
 }
 
 async function loadRecentTransactions() {
