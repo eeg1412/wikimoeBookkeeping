@@ -61,7 +61,7 @@
             </div>
             <div class="mt-3 flex items-center justify-between gap-3 text-xs">
               <span class="text-on-surface-secondary">
-                {{ group.items.length ? `含${group.items.length}个小类` : '' }}
+                {{ group.detailsText }}
               </span>
               <button
                 v-if="group.items.length"
@@ -137,6 +137,7 @@ import { DEFAULT_CATEGORY_ICON } from '@shared/icon-names.js'
 import SimpleChart from './SimpleChart.vue'
 import AppIcon from './AppIcon.vue'
 import {
+  buildParentCategoryGroups,
   buildParentCategoryDonutData,
   getCategoryAccentColor
 } from '../utils/category-ui.js'
@@ -157,7 +158,9 @@ const donutData = computed(() =>
   buildParentCategoryDonutData(props.categories, groupLimit)
 )
 
-const categoryGroups = computed(() => buildCategoryGroups(props.categories))
+const categoryGroups = computed(() =>
+  buildParentCategoryGroups(props.categories, groupLimit)
+)
 
 watch(
   categoryGroups,
@@ -196,87 +199,5 @@ function toggleGroup(key) {
 
 function isGroupExpanded(key) {
   return Boolean(expandedGroups.value[key])
-}
-
-function buildCategoryGroups(categories) {
-  if (!Array.isArray(categories) || categories.length === 0) {
-    return []
-  }
-
-  const groups = new Map()
-  const totalAmount = categories.reduce(
-    (sum, category) => sum + (Number(category.total) || 0),
-    0
-  )
-
-  categories.forEach(category => {
-    const key = category.parent_id
-      ? `parent-${category.parent_id}`
-      : `self-${category.id}`
-    const currentGroup = groups.get(key) || {
-      key,
-      label: category.parent_name || category.name,
-      icon: category.parent_id
-        ? category.parent_icon || category.icon
-        : category.icon,
-      color: getCategoryAccentColor(category),
-      total: 0,
-      count: 0,
-      items: []
-    }
-
-    currentGroup.total += Number(category.total) || 0
-    currentGroup.count += Number(category.count) || 0
-    currentGroup.icon =
-      currentGroup.icon ||
-      (category.parent_id
-        ? category.parent_icon || category.icon
-        : category.icon)
-    currentGroup.color = currentGroup.color || getCategoryAccentColor(category)
-
-    if (category.parent_id) {
-      currentGroup.items.push({
-        id: category.id,
-        name: category.name,
-        icon: category.icon,
-        total: Number(category.total) || 0,
-        count: Number(category.count) || 0,
-        color: getCategoryAccentColor(category)
-      })
-    }
-
-    groups.set(key, currentGroup)
-  })
-
-  return Array.from(groups.values())
-    .sort((left, right) => right.total - left.total)
-    .slice(0, groupLimit)
-    .map(group => {
-      const percentageValue =
-        totalAmount > 0 ? (group.total / totalAmount) * 100 : 0
-      const items = group.items
-        .sort((left, right) => right.total - left.total)
-        .map(item => {
-          const itemPercentage =
-            group.total > 0 ? (item.total / group.total) * 100 : 0
-
-          return {
-            ...item,
-            percentageText: itemPercentage.toFixed(1),
-            percentageValue: clampPercentage(itemPercentage)
-          }
-        })
-
-      return {
-        ...group,
-        percentageText: percentageValue.toFixed(1),
-        percentageValue: clampPercentage(percentageValue),
-        items
-      }
-    })
-}
-
-function clampPercentage(value) {
-  return Math.min(Math.max(Number(value) || 0, 0), 100)
 }
 </script>

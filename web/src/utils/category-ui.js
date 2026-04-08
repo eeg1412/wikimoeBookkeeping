@@ -83,6 +83,131 @@ export function getCategoryAccentColor(category) {
   )
 }
 
+function hasParentCategory(category) {
+  return category?.parent_id !== null && category?.parent_id !== undefined
+}
+
+function getParentCategoryGroupKey(category) {
+  const parentId = hasParentCategory(category)
+    ? category.parent_id
+    : category.id
+  return `parent-${parentId}`
+}
+
+function getParentCategoryLabel(category) {
+  return category?.parent_name || category?.name || ''
+}
+
+function getParentCategoryIcon(category) {
+  return hasParentCategory(category)
+    ? category?.parent_icon || category?.icon
+    : category?.icon
+}
+
+function clampPercentage(value) {
+  return Math.min(Math.max(Number(value) || 0, 0), 100)
+}
+
+export function buildParentCategoryGroups(categories, limit = Infinity) {
+  if (!Array.isArray(categories) || categories.length === 0) {
+    return []
+  }
+
+  const groups = new Map()
+  const totalAmount = categories.reduce(
+    (sum, category) => sum + (Number(category.total) || 0),
+    0
+  )
+
+  for (const category of categories) {
+    const key = getParentCategoryGroupKey(category)
+    const currentGroup = groups.get(key) || {
+      key,
+      label: getParentCategoryLabel(category),
+      icon: getParentCategoryIcon(category),
+      color: getCategoryAccentColor(category),
+      total: 0,
+      count: 0,
+      children: [],
+      directItem: null
+    }
+    const total = Number(category.total) || 0
+    const count = Number(category.count) || 0
+    const color = getCategoryAccentColor(category)
+
+    currentGroup.total += total
+    currentGroup.count += count
+    currentGroup.icon = currentGroup.icon || getParentCategoryIcon(category)
+    currentGroup.color = currentGroup.color || color
+
+    if (hasParentCategory(category)) {
+      currentGroup.children.push({
+        id: category.id,
+        name: category.name,
+        icon: category.icon,
+        total,
+        count,
+        color
+      })
+    } else {
+      currentGroup.directItem = {
+        id: `direct-${category.id}`,
+        name: `${category.name}（父级）`,
+        icon: category.icon,
+        total,
+        count,
+        color,
+        isDirectParent: true
+      }
+    }
+
+    groups.set(key, currentGroup)
+  }
+
+  return Array.from(groups.values())
+    .sort((left, right) => right.total - left.total)
+    .slice(0, limit)
+    .map(group => {
+      const hasDirectEntries = Boolean(
+        group.directItem && group.children.length > 0
+      )
+      const percentageValue =
+        totalAmount > 0 ? (group.total / totalAmount) * 100 : 0
+      const items = [
+        ...group.children,
+        ...(hasDirectEntries ? [group.directItem] : [])
+      ]
+        .sort((left, right) => right.total - left.total)
+        .map(item => {
+          const itemPercentage =
+            group.total > 0 ? (item.total / group.total) * 100 : 0
+
+          return {
+            ...item,
+            percentageText: itemPercentage.toFixed(1),
+            percentageValue: clampPercentage(itemPercentage)
+          }
+        })
+
+      return {
+        key: group.key,
+        label: group.label,
+        icon: group.icon,
+        color: group.color,
+        total: group.total,
+        count: group.count,
+        items,
+        childItemCount: group.children.length,
+        hasDirectEntries,
+        detailsText: group.children.length
+          ? `含${group.children.length}个小类${hasDirectEntries ? '及父级记录' : ''}`
+          : '',
+        percentageText: percentageValue.toFixed(1),
+        percentageValue: clampPercentage(percentageValue)
+      }
+    })
+}
+
 export function buildParentCategoryDonutData(categories, limit = Infinity) {
   if (!Array.isArray(categories) || categories.length === 0) {
     return []
@@ -95,9 +220,7 @@ export function buildParentCategoryDonutData(categories, limit = Infinity) {
   const grouped = new Map()
 
   for (const category of categories) {
-    const key = category.parent_id
-      ? `parent-${category.parent_id}`
-      : `self-${category.id}`
+    const key = getParentCategoryGroupKey(category)
     const current = grouped.get(key)
 
     if (current) {
@@ -106,12 +229,10 @@ export function buildParentCategoryDonutData(categories, limit = Infinity) {
     }
 
     grouped.set(key, {
-      label: category.parent_name || category.name,
+      label: getParentCategoryLabel(category),
       value: Number(category.total) || 0,
       color: getCategoryAccentColor(category),
-      icon: category.parent_id
-        ? category.parent_icon || category.icon
-        : category.icon
+      icon: getParentCategoryIcon(category)
     })
   }
 

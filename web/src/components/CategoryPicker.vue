@@ -185,12 +185,7 @@ function switchType(type) {
 
 function toggleParent(id) {
   selectedParent.value = id
-  const parent = parentCategories.value.find(c => c.id === id)
-  if (!parent?.children?.length) {
-    selectCategory(id)
-  } else {
-    selectedId.value = null
-  }
+  selectCategory(id)
 }
 
 function selectCategory(id) {
