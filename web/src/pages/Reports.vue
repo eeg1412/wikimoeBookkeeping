@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <h1 class="page-title">统计报表</h1>
+    <h1 class="page-title">总览</h1>
 
     <div class="card">
       <div class="flex flex-wrap gap-2 items-stretch sm:items-center">
@@ -40,25 +40,92 @@
       </div>
     </div>
 
-    <div v-if="summary" class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div v-if="summary" class="grid grid-cols-2 gap-3 xl:grid-cols-4">
       <StatCard
         title="收入"
         :value="summary.income"
         type="income"
         :prefix="currencySymbol"
+        icon="income"
       />
       <StatCard
         title="支出"
         :value="summary.expense"
         type="expense"
         :prefix="currencySymbol"
+        icon="expense"
       />
       <StatCard
         title="结余"
         :value="summary.net"
         type="balance"
         :prefix="currencySymbol"
+        icon="balance"
       />
+      <StatCard
+        title="笔数"
+        :value="`收${summary.income_count || 0} / 支${summary.expense_count || 0}`"
+        compact
+        icon="notes"
+      />
+    </div>
+
+    <div class="card">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <h2 class="font-bold text-on-surface">最近账目</h2>
+        <router-link
+          to="/transactions"
+          class="inline-flex items-center gap-1 text-sm text-primary"
+        >
+          <span class="-mr-[7px]">全部</span>
+          <AppIcon name="chevron-right" :size="16" />
+        </router-link>
+      </div>
+      <div
+        v-if="!recentTxns.length"
+        class="py-8 text-center text-on-surface-secondary"
+      >
+        暂无记录，<router-link to="/transactions/new" class="text-primary"
+          >去记一笔</router-link
+        >
+      </div>
+      <div v-else class="divide-y divide-border">
+        <div
+          v-for="txn in recentTxns"
+          :key="txn.id"
+          class="flex items-center gap-3 py-3"
+        >
+          <AppIcon
+            :name="txn.category_icon || DEFAULT_CATEGORY_ICON"
+            :size="24"
+            :style="getTransactionCategoryStyle(txn)"
+          />
+          <div class="min-w-0 flex-1">
+            <div
+              class="truncate text-sm font-medium"
+              :style="getTransactionCategoryStyle(txn)"
+            >
+              {{
+                txn.parent_category_name
+                  ? txn.parent_category_name + ' / '
+                  : ''
+              }}{{ txn.category_name }}
+            </div>
+            <div class="text-xs text-on-surface-secondary">
+              {{ txn.date }}{{ txn.note ? ' · ' + txn.note : '' }}
+            </div>
+          </div>
+          <div
+            class="text-sm font-bold"
+            :class="
+              txn.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
+            "
+          >
+            {{ txn.type === 'income' ? '+' : '-'
+            }}{{ settingsStore.formatMoney(txn.amount, txn.currency) }}
+          </div>
+        </div>
+      </div>
     </div>
 
     <div
@@ -450,6 +517,13 @@
         </div>
       </div>
     </div>
+
+    <router-link
+      to="/transactions/new"
+      class="fixed bottom-8 right-8 z-10 hidden h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl text-white shadow-lg transition-colors hover:bg-primary-dark min-[1420px]:flex"
+    >
+      <AppIcon name="add" :size="28" />
+    </router-link>
   </div>
 </template>
 
@@ -458,6 +532,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { DEFAULT_CATEGORY_ICON } from '@shared/icon-names.js'
 import { useReportsStore } from '../stores/reports.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { api } from '../api/client.js'
 import StatCard from '../components/StatCard.vue'
 import SimpleChart from '../components/SimpleChart.vue'
 import AppIcon from '../components/AppIcon.vue'
@@ -482,6 +557,7 @@ const summary = ref(null)
 const expenseCategoryReport = ref(null)
 const incomeCategoryReport = ref(null)
 const trendData = ref([])
+const recentTxns = ref([])
 
 const categoryGroupLimit = 10
 
@@ -556,6 +632,11 @@ function selectPeriod(nextPeriod) {
 
 function getCategoryStyle(category) {
   const color = getCategoryAccentColor(category)
+  return color ? { color } : undefined
+}
+
+function getTransactionCategoryStyle(transaction) {
+  const color = getCategoryAccentColor(transaction)
   return color ? { color } : undefined
 }
 
@@ -694,6 +775,7 @@ async function loadData() {
   expenseCategoryReport.value = null
   incomeCategoryReport.value = null
   trendData.value = []
+  recentTxns.value = []
 
   const params = {
     period: period.value,
@@ -704,7 +786,21 @@ async function loadData() {
   summary.value = await reportsStore
     .fetchSummary(params)
     .then(() => reportsStore.summary)
-  await Promise.all([loadCategories(), loadTrend()])
+  await Promise.all([loadCategories(), loadTrend(), loadRecentTransactions()])
+}
+
+async function loadRecentTransactions() {
+  const params = new URLSearchParams({
+    page: '1',
+    pageSize: '10'
+  })
+
+  if (selectedCurrency.value) {
+    params.set('currency', selectedCurrency.value)
+  }
+
+  const data = await api.get(`/transactions?${params.toString()}`)
+  recentTxns.value = data.list
 }
 
 async function loadCategories() {

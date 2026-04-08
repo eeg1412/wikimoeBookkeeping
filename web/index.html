@@ -2,6 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
     <link
       rel="icon"
       type="image/svg+xml"
@@ -12,6 +13,20 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>维基萌记账本</title>
+    <script>
+      ;(() => {
+        const root = document.documentElement
+        const themeColor = localStorage.getItem('wikimoe-theme-color') || 'blue'
+        const darkMode = localStorage.getItem('wikimoe-dark-mode') || 'system'
+        const isDark =
+          darkMode === 'dark' ||
+          (darkMode === 'system' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+        root.setAttribute('data-theme', themeColor)
+        root.classList.toggle('dark', isDark)
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

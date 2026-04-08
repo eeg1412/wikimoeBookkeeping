@@ -166,17 +166,17 @@ function shuffleColor() {
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  border: 2px solid white;
+  border: 2px solid rgb(var(--color-surface-secondary));
   box-shadow: 0 1px 6px rgb(15 23 42 / 0.28);
-  background: white;
+  background: rgb(var(--color-surface));
 }
 
 .color-range::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  border: 2px solid white;
+  border: 2px solid rgb(var(--color-surface-secondary));
   box-shadow: 0 1px 6px rgb(15 23 42 / 0.28);
-  background: white;
+  background: rgb(var(--color-surface));
 }
 </style>

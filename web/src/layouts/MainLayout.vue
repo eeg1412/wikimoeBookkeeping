@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-surface text-on-surface">
+  <div class="min-h-screen bg-surface-secondary text-on-surface">
     <!-- Desktop sidebar -->
     <aside
-      class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-60 lg:flex-col border-r border-border bg-surface-secondary"
+      class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-60 lg:flex-col border-r border-border bg-border/80"
     >
       <div class="flex h-14 items-center gap-2 px-5 border-b border-border">
         <AppIcon name="brand" :size="22" class="text-primary" />
@@ -13,7 +13,7 @@
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-on-surface-secondary transition-colors hover:bg-border/30 hover:text-on-surface"
+          class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-on-surface-secondary transition-colors hover:bg-surface/70 hover:text-on-surface"
           :class="isActive(item.to) ? '!bg-primary/10 !text-primary' : ''"
         >
           <AppIcon :name="item.icon" :size="20" class="w-6 text-center" />
@@ -45,7 +45,7 @@
 
     <!-- Mobile header -->
     <header
-      class="lg:hidden sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface-secondary/80 backdrop-blur px-4"
+      class="lg:hidden sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-border/80 backdrop-blur px-4"
     >
       <div class="flex items-center gap-2">
         <AppIcon name="brand" :size="20" class="text-primary" />
@@ -72,7 +72,7 @@
     <Transition name="slide">
       <div
         v-if="moreOpen"
-        class="lg:hidden fixed top-0 right-0 z-40 h-full w-64 bg-surface-secondary border-l border-border shadow-xl"
+        class="lg:hidden fixed top-0 right-0 z-40 h-full w-64 bg-border/85 border-l border-border shadow-xl backdrop-blur"
       >
         <div
           class="flex h-14 items-center justify-between px-4 border-b border-border"
@@ -90,7 +90,7 @@
             v-for="item in navItems"
             :key="item.to"
             :to="item.to"
-            class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-on-surface-secondary hover:bg-border/30 hover:text-on-surface"
+            class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-on-surface-secondary hover:bg-surface/70 hover:text-on-surface"
             :class="isActive(item.to) ? '!bg-primary/10 !text-primary' : ''"
             @click="moreOpen = false"
           >
@@ -120,7 +120,7 @@
 
     <!-- Mobile bottom navigation -->
     <nav
-      class="lg:hidden fixed bottom-0 inset-x-0 z-20 flex items-center justify-around border-t border-border bg-surface-secondary/95 backdrop-blur safe-bottom h-16"
+      class="lg:hidden fixed bottom-0 inset-x-0 z-20 flex items-center justify-around border-t border-border bg-border/85 backdrop-blur safe-bottom h-16"
     >
       <router-link
         v-for="item in bottomNav"
@@ -142,14 +142,6 @@
           <AppIcon name="add" :size="20" />
         </span>
         <span class="text-[10px] font-medium text-primary">记账</span>
-      </router-link>
-      <router-link
-        to="/reports"
-        class="flex flex-col items-center gap-0.5 text-[10px] font-medium text-on-surface-secondary min-w-[56px] py-1"
-        :class="isActive('/reports') ? '!text-primary' : ''"
-      >
-        <AppIcon name="reports" :size="22" />
-        <span>统计</span>
       </router-link>
       <button
         @click="moreOpen = true"
@@ -186,7 +178,6 @@ const navItems = [
   { to: '/transactions', icon: 'transactions', label: '账目' },
   { to: '/categories', icon: 'categories', label: '分类' },
   { to: '/recurring', icon: 'recurring', label: '周期' },
-  { to: '/reports', icon: 'reports', label: '统计' },
   { to: '/data', icon: 'data', label: '数据' },
   { to: '/login-attempts', icon: 'security', label: '登录日志' },
   { to: '/settings', icon: 'settings', label: '设置' }

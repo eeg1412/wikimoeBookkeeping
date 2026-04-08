@@ -157,13 +157,6 @@
       >
         子分类沿用大类分类颜色，当前为 {{ previewAccentColor }}。
       </div>
-
-      <div
-        v-if="errorMsg"
-        class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600"
-      >
-        {{ errorMsg }}
-      </div>
     </div>
 
     <template #footer>
@@ -180,6 +173,7 @@ import { computed, ref, watch } from 'vue'
 import { COMMON_CATEGORY_ICON } from '@shared/icon-names.js'
 import { useCategoriesStore } from '../stores/categories.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useToastStore } from '../stores/toast.js'
 import AppIcon from './AppIcon.vue'
 import AppModal from './AppModal.vue'
 import ColorPicker from './ColorPicker.vue'
@@ -201,6 +195,7 @@ const emit = defineEmits(['close', 'created'])
 
 const categoriesStore = useCategoriesStore()
 const settingsStore = useSettingsStore()
+const toastStore = useToastStore()
 
 const scope = ref('parent')
 const formParentId = ref(null)
@@ -301,12 +296,14 @@ async function handleSave() {
   if (!trimmedName) {
     fieldErrors.value.name = '请输入名称'
     errorMsg.value = ''
+    toastStore.error('请输入名称', { title: '表单校验失败' })
     return
   }
 
   if (isChildScope.value && !formParentId.value) {
     fieldErrors.value.parentId = '请选择归属大类'
     errorMsg.value = ''
+    toastStore.error('请选择归属大类', { title: '表单校验失败' })
     return
   }
 
@@ -326,6 +323,7 @@ async function handleSave() {
     emit('close')
   } catch (error) {
     errorMsg.value = error.message
+    toastStore.error(error.message, { title: '分类创建失败' })
   } finally {
     saving.value = false
   }

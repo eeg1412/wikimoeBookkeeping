@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-surface text-on-surface antialiased;
+    @apply bg-surface-secondary text-on-surface antialiased;
     font-family:
       -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
       Arial, 'Noto Sans SC', sans-serif;

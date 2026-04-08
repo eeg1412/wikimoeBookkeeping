@@ -286,7 +286,14 @@ const donutOptions = computed(() => {
       transitionDuration: 0,
       appendToBody: true,
       enterable: false,
-      extraCssText: 'pointer-events:none;',
+      backgroundColor: theme.tooltipBackgroundColor,
+      borderColor: theme.tooltipBorderColor,
+      borderWidth: 1,
+      textStyle: {
+        color: theme.tooltipTextColor,
+        fontSize: 12
+      },
+      extraCssText: `pointer-events:none;border-radius:12px;box-shadow:0 14px 36px ${theme.tooltipShadowColor};`,
       formatter(params) {
         if (!hasDonutData.value) {
           return '暂无数据'
@@ -384,12 +391,20 @@ const barOptions = computed(() => {
     },
     tooltip: {
       trigger: 'axis',
+      backgroundColor: theme.tooltipBackgroundColor,
+      borderColor: theme.tooltipBorderColor,
+      borderWidth: 1,
+      textStyle: {
+        color: theme.tooltipTextColor,
+        fontSize: 12
+      },
       axisPointer: {
         type: 'shadow',
         shadowStyle: {
           color: theme.shadowColor
         }
       },
+      extraCssText: `border-radius:12px;box-shadow:0 14px 36px ${theme.tooltipShadowColor};`,
       formatter(params) {
         const entries = Array.isArray(params) ? params : [params]
         const title = escapeHtml(entries[0]?.axisValueLabel || '')
@@ -491,14 +506,19 @@ function getThemePalette() {
       textColor: '#111827',
       secondaryTextColor: '#6b7280',
       borderColor: '#e5e7eb',
-      gridLineColor: '#f3f4f6',
-      surfaceColor: '#ffffff',
-      trackColor: '#f3f4f6',
-      shadowColor: 'rgba(107, 114, 128, 0.08)'
+      gridLineColor: '#dae0e8',
+      surfaceColor: '#f6f8fb',
+      trackColor: '#eef2f7',
+      shadowColor: 'rgba(107, 114, 128, 0.08)',
+      tooltipBackgroundColor: '#ffffff',
+      tooltipBorderColor: '#e5e7eb',
+      tooltipTextColor: '#111827',
+      tooltipShadowColor: 'rgba(15, 23, 42, 0.14)'
     }
   }
 
   const styles = getComputedStyle(document.documentElement)
+  const isDark = document.documentElement.classList.contains('dark')
 
   return {
     textColor: resolveCssColor(
@@ -519,13 +539,28 @@ function getThemePalette() {
     ),
     surfaceColor: resolveCssColor(
       styles.getPropertyValue('--color-surface'),
-      '#ffffff'
+      '#f6f8fb'
     ),
     trackColor: resolveCssColor(
       styles.getPropertyValue('--color-surface-secondary'),
-      '#f3f4f6'
+      '#eef2f7'
     ),
-    shadowColor: 'rgba(107, 114, 128, 0.08)'
+    shadowColor: isDark
+      ? 'rgba(15, 23, 42, 0.22)'
+      : 'rgba(107, 114, 128, 0.08)',
+    tooltipBackgroundColor: resolveCssColor(
+      styles.getPropertyValue('--color-surface-secondary'),
+      isDark ? '#1f2937' : '#ffffff'
+    ),
+    tooltipBorderColor: resolveCssColor(
+      styles.getPropertyValue('--color-border'),
+      '#e5e7eb'
+    ),
+    tooltipTextColor: resolveCssColor(
+      styles.getPropertyValue('--color-on-surface'),
+      '#111827'
+    ),
+    tooltipShadowColor: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(15, 23, 42, 0.14)'
   }
 }
 

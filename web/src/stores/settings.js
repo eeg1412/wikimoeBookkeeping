@@ -1,13 +1,19 @@
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '../api/client.js'
+import {
+  applyThemePreference,
+  getStoredThemePreferences
+} from '../utils/theme.js'
+
+const storedThemePreferences = getStoredThemePreferences()
 
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref({
     default_currency: 'CNY',
     timezone: 'Asia/Shanghai',
-    theme_color: 'blue',
-    dark_mode: 'system',
+    theme_color: storedThemePreferences.themeColor,
+    dark_mode: storedThemePreferences.darkMode,
     week_start: '1'
   })
   const currencies = ref([])
@@ -39,26 +45,25 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function update(data) {
-    settings.value = await api.put('/settings', data)
+    const nextSettings = await api.put('/settings', data)
+    settings.value = { ...settings.value, ...nextSettings }
     applyTheme()
   }
 
-  function applyTheme() {
-    const html = document.documentElement
-    html.setAttribute('data-theme', settings.value.theme_color || 'blue')
+  function applyTheme(themeSettings = settings.value, options = {}) {
+    const appliedPreferences = applyThemePreference(themeSettings, {
+      persist: options.persist ?? true
+    })
 
-    const dm = settings.value.dark_mode
-    if (dm === 'dark') {
-      html.classList.add('dark')
-    } else if (dm === 'light') {
-      html.classList.remove('dark')
-    } else {
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        html.classList.add('dark')
-      } else {
-        html.classList.remove('dark')
+    if (themeSettings === settings.value) {
+      settings.value = {
+        ...settings.value,
+        theme_color: appliedPreferences.themeColor,
+        dark_mode: appliedPreferences.darkMode
       }
     }
+
+    return appliedPreferences
   }
 
   function getCurrencySymbol(code) {

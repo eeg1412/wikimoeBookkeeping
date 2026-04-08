@@ -76,9 +76,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useSettingsStore } from '../stores/settings.js'
 import ThemeSelector from '../components/ThemeSelector.vue'
+import { applyThemePreference } from '../utils/theme.js'
 
 const settingsStore = useSettingsStore()
 
@@ -111,27 +112,11 @@ const timezones = [
 ]
 
 watch(
-  () => localSettings.value.theme_color,
+  () => [localSettings.value.theme_color, localSettings.value.dark_mode],
   () => {
-    document.documentElement.setAttribute(
-      'data-theme',
-      localSettings.value.theme_color
-    )
-  }
-)
-
-watch(
-  () => localSettings.value.dark_mode,
-  dm => {
-    const html = document.documentElement
-    if (dm === 'dark') html.classList.add('dark')
-    else if (dm === 'light') html.classList.remove('dark')
-    else {
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches)
-        html.classList.add('dark')
-      else html.classList.remove('dark')
-    }
-  }
+    applyThemePreference(localSettings.value, { persist: false })
+  },
+  { immediate: true }
 )
 
 async function handleSave() {
@@ -139,6 +124,7 @@ async function handleSave() {
   msg.value = ''
   try {
     await settingsStore.update(localSettings.value)
+    localSettings.value = { ...settingsStore.settings }
     msg.value = '设置已保存'
     msgType.value = 'success'
   } catch (e) {
@@ -151,5 +137,9 @@ async function handleSave() {
 
 onMounted(() => {
   localSettings.value = { ...settingsStore.settings }
+})
+
+onBeforeUnmount(() => {
+  settingsStore.applyTheme()
 })
 </script>

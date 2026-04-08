@@ -38,7 +38,6 @@
           />
           <span class="text-sm text-on-surface-secondary">保持登录</span>
         </label>
-        <p v-if="errorMsg" class="text-sm text-red-500">{{ errorMsg }}</p>
         <button type="submit" class="btn-primary w-full" :disabled="loading">
           {{ loading ? '登录中...' : '登录' }}
         </button>
@@ -51,28 +50,28 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import { useToastStore } from '../stores/toast.js'
 import AppIcon from '../components/AppIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const toastStore = useToastStore()
 const username = ref('')
 const password = ref('')
 const rememberMe = ref(false)
 const loading = ref(false)
-const errorMsg = ref('')
 
 async function handleLogin() {
   if (!username.value || !password.value) {
-    errorMsg.value = '请输入用户名和密码'
+    toastStore.error('请输入用户名和密码', { title: '表单校验失败' })
     return
   }
   loading.value = true
-  errorMsg.value = ''
   try {
     await authStore.login(username.value, password.value, rememberMe.value)
     router.push('/')
   } catch (e) {
-    errorMsg.value = e.message
+    toastStore.error(e.message, { title: '登录失败' })
   } finally {
     loading.value = false
   }

@@ -13,7 +13,7 @@ const routes = [
       {
         path: '',
         name: 'Dashboard',
-        component: () => import('../pages/Dashboard.vue')
+        component: () => import('../pages/Reports.vue')
       },
       {
         path: 'transactions',
@@ -53,7 +53,7 @@ const routes = [
       {
         path: 'reports',
         name: 'Reports',
-        component: () => import('../pages/Reports.vue')
+        redirect: { name: 'Dashboard' }
       },
       {
         path: 'settings',

@@ -157,8 +157,6 @@
         />
       </div>
 
-      <p v-if="errorMsg" class="text-sm text-red-500">{{ errorMsg }}</p>
-
       <button type="submit" class="btn-primary w-full" :disabled="saving">
         {{ saving ? '保存中...' : '保存' }}
       </button>
@@ -171,6 +169,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecurringStore } from '../stores/recurring.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useToastStore } from '../stores/toast.js'
 import CategoryPicker from '../components/CategoryPicker.vue'
 import CurrencyInput from '../components/CurrencyInput.vue'
 import DatePicker from '../components/DatePicker.vue'
@@ -179,10 +178,10 @@ const route = useRoute()
 const router = useRouter()
 const store = useRecurringStore()
 const settingsStore = useSettingsStore()
+const toastStore = useToastStore()
 
 const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
-const errorMsg = ref('')
 
 const timezones = [
   'Asia/Shanghai',
@@ -245,26 +244,25 @@ async function loadRule() {
       }
     }
   } catch (e) {
-    errorMsg.value = '加载失败: ' + e.message
+    toastStore.error('加载失败: ' + e.message, { title: '规则加载失败' })
   }
 }
 
 async function handleSubmit() {
   if (!form.value.name) {
-    errorMsg.value = '请输入规则名称'
+    toastStore.error('请输入规则名称', { title: '表单校验失败' })
     return
   }
   if (!form.value.category_id) {
-    errorMsg.value = '请选择分类'
+    toastStore.error('请选择分类', { title: '表单校验失败' })
     return
   }
   if (!form.value.amount || form.value.amount <= 0) {
-    errorMsg.value = '请输入有效金额'
+    toastStore.error('请输入有效金额', { title: '表单校验失败' })
     return
   }
 
   saving.value = true
-  errorMsg.value = ''
   try {
     const data = { ...form.value }
     if (!data.end_date) data.end_date = null
@@ -288,7 +286,9 @@ async function handleSubmit() {
     }
     router.back()
   } catch (e) {
-    errorMsg.value = e.message
+    toastStore.error(e.message, {
+      title: isEdit.value ? '规则保存失败' : '规则创建失败'
+    })
   } finally {
     saving.value = false
   }

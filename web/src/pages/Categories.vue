@@ -43,7 +43,7 @@
         class="card !p-0 overflow-hidden"
       >
         <div
-          class="flex flex-wrap items-center gap-2 bg-surface-secondary/50 px-4 py-3 sm:gap-3"
+          class="flex flex-wrap items-center gap-2 bg-surface-secondary px-4 py-3 sm:gap-3"
         >
           <div
             class="flex min-w-0 flex-1 items-center gap-3"
@@ -195,13 +195,6 @@
             <span>子分类沿用大类分类颜色，当前为 {{ inheritedColor }}。</span>
           </div>
         </div>
-
-        <div
-          v-if="formError"
-          class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600"
-        >
-          {{ formError }}
-        </div>
       </div>
 
       <template #footer>
@@ -236,6 +229,7 @@ import { COMMON_CATEGORY_ICON } from '@shared/icon-names.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useCategoriesStore } from '../stores/categories.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useToastStore } from '../stores/toast.js'
 import AppModal from '../components/AppModal.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AppIcon from '../components/AppIcon.vue'
@@ -252,6 +246,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useCategoriesStore()
 const settingsStore = useSettingsStore()
+const toastStore = useToastStore()
 
 const activeType = ref('expense')
 const showForm = ref(false)
@@ -363,6 +358,7 @@ async function handleSave() {
   if (!trimmedName) {
     formFieldErrors.value.name = '请输入名称'
     formError.value = ''
+    toastStore.error('请输入名称', { title: '表单校验失败' })
     return
   }
 
@@ -399,6 +395,9 @@ async function handleSave() {
     showForm.value = false
   } catch (error) {
     formError.value = error.message
+    toastStore.error(error.message, {
+      title: editingCat.value ? '分类保存失败' : '分类创建失败'
+    })
   } finally {
     formSaving.value = false
   }
@@ -412,7 +411,7 @@ async function handleDelete() {
   try {
     await store.remove(deletingCat.value.id)
   } catch (error) {
-    alert(error.message)
+    toastStore.error(error.message, { title: '分类删除失败' })
   }
 
   deletingCat.value = null

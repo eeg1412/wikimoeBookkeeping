@@ -9,7 +9,7 @@
         class="text-on-surface-secondary"
       />
     </div>
-    <div class="text-xl font-bold sm:text-2xl" :class="valueClass">
+    <div :class="[valueTextClass, valueClass]">
       {{ displayValue }}
     </div>
     <div v-if="sub" class="text-xs text-on-surface-secondary mt-1">
@@ -25,15 +25,25 @@ import AppIcon from './AppIcon.vue'
 const props = defineProps({
   title: String,
   value: [Number, String],
+  compact: Boolean,
   icon: String,
   type: { type: String, default: '' },
   prefix: { type: String, default: '' },
   sub: String
 })
 
+const displaySign = computed(() => {
+  if (props.type === 'balance' && (numericValue.value || 0) > 0) {
+    return '+'
+  }
+
+  return ''
+})
+
 const displayValue = computed(() => {
   if (typeof props.value === 'number') {
     return (
+      displaySign.value +
       props.prefix +
       props.value.toLocaleString('zh-CN', {
         minimumFractionDigits: 2,
@@ -41,8 +51,14 @@ const displayValue = computed(() => {
       })
     )
   }
-  return props.prefix + (props.value || '0.00')
+  return displaySign.value + props.prefix + (props.value || '0.00')
 })
+
+const valueTextClass = computed(() =>
+  props.compact
+    ? 'pt-2 text-xs font-medium leading-tight sm:text-sm'
+    : 'text-xl font-bold sm:text-2xl'
+)
 
 const numericValue = computed(() => {
   if (typeof props.value === 'number') return props.value

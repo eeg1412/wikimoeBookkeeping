@@ -46,8 +46,6 @@
         />
       </div>
 
-      <p v-if="errorMsg" class="text-sm text-red-500">{{ errorMsg }}</p>
-
       <div class="flex gap-3">
         <button type="submit" class="btn-primary flex-1" :disabled="saving">
           {{ saving ? '保存中...' : '保存' }}
@@ -89,6 +87,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useTransactionsStore } from '../stores/transactions.js'
 import { useCategoriesStore } from '../stores/categories.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useToastStore } from '../stores/toast.js'
 import { api } from '../api/client.js'
 import CategoryPicker from '../components/CategoryPicker.vue'
 import CategoryQuickCreateDialog from '../components/CategoryQuickCreateDialog.vue'
@@ -101,10 +100,10 @@ const router = useRouter()
 const store = useTransactionsStore()
 const categoriesStore = useCategoriesStore()
 const settingsStore = useSettingsStore()
+const toastStore = useToastStore()
 
 const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
-const errorMsg = ref('')
 const showDelete = ref(false)
 const showQuickCategoryDialog = ref(false)
 
@@ -138,7 +137,7 @@ async function loadTransaction() {
       note: txn.note || ''
     }
   } catch (e) {
-    errorMsg.value = '加载失败: ' + e.message
+    toastStore.error('加载失败: ' + e.message, { title: '账目加载失败' })
   }
 }
 
@@ -149,15 +148,14 @@ function handleCategoryCreated(category) {
 
 async function handleSubmit() {
   if (!form.value.category_id) {
-    errorMsg.value = '请选择分类'
+    toastStore.error('请选择分类', { title: '表单校验失败' })
     return
   }
   if (!form.value.amount || form.value.amount <= 0) {
-    errorMsg.value = '请输入有效金额'
+    toastStore.error('请输入有效金额', { title: '表单校验失败' })
     return
   }
   saving.value = true
-  errorMsg.value = ''
   try {
     if (isEdit.value) {
       await store.update(Number(route.params.id), form.value)
@@ -166,7 +164,9 @@ async function handleSubmit() {
     }
     router.back()
   } catch (e) {
-    errorMsg.value = e.message
+    toastStore.error(e.message, {
+      title: isEdit.value ? '账目保存失败' : '账目创建失败'
+    })
   } finally {
     saving.value = false
   }
@@ -177,7 +177,7 @@ async function handleDelete() {
     await store.remove(Number(route.params.id))
     router.replace('/transactions')
   } catch (e) {
-    errorMsg.value = e.message
+    toastStore.error(e.message, { title: '账目删除失败' })
   }
   showDelete.value = false
 }
