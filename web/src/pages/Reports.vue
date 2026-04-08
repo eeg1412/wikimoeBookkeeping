@@ -72,47 +72,157 @@
         </div>
 
         <template v-if="expenseCategoryReport?.categories?.length">
-          <SimpleChart
-            type="donut"
-            :data="expenseDonutData"
-            center-label="总支出"
-            :center-value="
-              settingsStore.formatMoney(
-                expenseCategoryReport.total,
-                selectedCurrency
-              )
-            "
-          />
-          <div class="mt-4 space-y-2">
-            <div
-              v-for="cat in expenseCategoryReport.categories"
-              :key="cat.id"
-              class="flex items-start gap-3 text-sm"
-            >
-              <AppIcon
-                :name="cat.icon"
-                :size="20"
-                class="mt-0.5 shrink-0"
-                :style="getCategoryStyle(cat)"
-              />
-              <div class="min-w-0 flex-1">
-                <div
-                  class="truncate font-medium"
-                  :style="getCategoryStyle(cat)"
-                >
-                  {{ cat.parent_name ? cat.parent_name + ' / ' : ''
-                  }}{{ cat.name }}
-                </div>
-                <div
-                  class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm"
-                >
-                  <span class="text-on-surface-secondary"
-                    >{{ cat.count }}笔</span
-                  >
-                  <span class="font-medium">{{ cat.percentage }}%</span>
-                  <span class="font-bold">{{
-                    settingsStore.formatMoney(cat.total, selectedCurrency)
-                  }}</span>
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <SimpleChart
+              class="shrink-0"
+              type="donut"
+              :data="expenseDonutData"
+              :value-formatter="formatChartValue"
+              :show-legend="false"
+              center-label="总支出"
+              :center-value="
+                settingsStore.formatMoney(
+                  expenseCategoryReport.total,
+                  selectedCurrency
+                )
+              "
+            />
+            <div class="min-w-0 flex-1 space-y-3">
+              <div
+                v-for="group in expenseCategoryGroups"
+                :key="group.key"
+                class="rounded-xl border border-border/60 bg-surface-secondary/30 p-3"
+              >
+                <div class="flex items-start gap-3">
+                  <span
+                    class="mt-1 h-3 w-3 rounded-full shrink-0"
+                    :style="{ backgroundColor: group.color }"
+                  ></span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start gap-3">
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                          <AppIcon
+                            :name="group.icon || DEFAULT_CATEGORY_ICON"
+                            :size="16"
+                            class="shrink-0"
+                            :style="getCategoryStyle(group)"
+                          />
+                          <div
+                            class="truncate font-semibold"
+                            :style="
+                              group.color ? { color: group.color } : undefined
+                            "
+                          >
+                            {{ group.label }}
+                          </div>
+                        </div>
+                        <div class="mt-1 text-xs text-on-surface-secondary">
+                          {{ group.count }}笔
+                        </div>
+                      </div>
+                      <div class="shrink-0 text-right">
+                        <div class="font-semibold text-on-surface">
+                          {{ group.percentageText }}%
+                        </div>
+                        <div class="text-xs text-on-surface-secondary">
+                          {{ formatChartValue(group.total) }}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="mt-2 h-1.5 overflow-hidden rounded-full bg-border/60"
+                    >
+                      <div
+                        class="h-full rounded-full"
+                        :style="{
+                          width: group.percentageValue + '%',
+                          backgroundColor: group.color
+                        }"
+                      ></div>
+                    </div>
+                    <div
+                      class="mt-3 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <span class="text-on-surface-secondary">
+                        {{
+                          group.items.length
+                            ? `含${group.items.length}个小类`
+                            : '无小类'
+                        }}
+                      </span>
+                      <button
+                        v-if="group.items.length"
+                        type="button"
+                        class="font-medium text-primary"
+                        @click="toggleCategoryGroup('expense', group.key)"
+                      >
+                        {{
+                          isCategoryGroupExpanded('expense', group.key)
+                            ? '收起'
+                            : '展开'
+                        }}
+                      </button>
+                    </div>
+                    <div
+                      v-if="
+                        group.items.length &&
+                        isCategoryGroupExpanded('expense', group.key)
+                      "
+                      class="mt-3 rounded-lg bg-surface-secondary/60 p-3 space-y-3"
+                    >
+                      <div
+                        v-for="item in group.items"
+                        :key="item.id"
+                        class="text-xs sm:text-sm"
+                      >
+                        <div class="flex items-start gap-2">
+                          <AppIcon
+                            :name="item.icon"
+                            :size="16"
+                            class="mt-0.5 shrink-0"
+                            :style="getCategoryStyle(item)"
+                          />
+                          <div class="min-w-0 flex-1">
+                            <div class="flex items-start gap-3">
+                              <div class="min-w-0 flex-1">
+                                <div
+                                  class="truncate"
+                                  :style="getCategoryStyle(item)"
+                                >
+                                  {{ item.name }}
+                                </div>
+                                <div
+                                  class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-on-surface-secondary"
+                                >
+                                  <span>{{ item.count }}笔</span>
+                                  <span class="font-medium text-on-surface">{{
+                                    formatChartValue(item.total)
+                                  }}</span>
+                                </div>
+                              </div>
+                              <div class="shrink-0 text-right">
+                                <div class="font-medium text-on-surface">
+                                  {{ item.percentageText }}%
+                                </div>
+                              </div>
+                            </div>
+                            <div
+                              class="mt-1.5 h-1 overflow-hidden rounded-full bg-border/50"
+                            >
+                              <div
+                                class="h-full rounded-full"
+                                :style="{
+                                  width: item.percentageValue + '%',
+                                  backgroundColor: item.color || group.color
+                                }"
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -130,47 +240,157 @@
         </div>
 
         <template v-if="incomeCategoryReport?.categories?.length">
-          <SimpleChart
-            type="donut"
-            :data="incomeDonutData"
-            center-label="总收入"
-            :center-value="
-              settingsStore.formatMoney(
-                incomeCategoryReport.total,
-                selectedCurrency
-              )
-            "
-          />
-          <div class="mt-4 space-y-2">
-            <div
-              v-for="cat in incomeCategoryReport.categories"
-              :key="cat.id"
-              class="flex items-start gap-3 text-sm"
-            >
-              <AppIcon
-                :name="cat.icon"
-                :size="20"
-                class="mt-0.5 shrink-0"
-                :style="getCategoryStyle(cat)"
-              />
-              <div class="min-w-0 flex-1">
-                <div
-                  class="truncate font-medium"
-                  :style="getCategoryStyle(cat)"
-                >
-                  {{ cat.parent_name ? cat.parent_name + ' / ' : ''
-                  }}{{ cat.name }}
-                </div>
-                <div
-                  class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm"
-                >
-                  <span class="text-on-surface-secondary"
-                    >{{ cat.count }}笔</span
-                  >
-                  <span class="font-medium">{{ cat.percentage }}%</span>
-                  <span class="font-bold">{{
-                    settingsStore.formatMoney(cat.total, selectedCurrency)
-                  }}</span>
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <SimpleChart
+              class="shrink-0"
+              type="donut"
+              :data="incomeDonutData"
+              :value-formatter="formatChartValue"
+              :show-legend="false"
+              center-label="总收入"
+              :center-value="
+                settingsStore.formatMoney(
+                  incomeCategoryReport.total,
+                  selectedCurrency
+                )
+              "
+            />
+            <div class="min-w-0 flex-1 space-y-3">
+              <div
+                v-for="group in incomeCategoryGroups"
+                :key="group.key"
+                class="rounded-xl border border-border/60 bg-surface-secondary/30 p-3"
+              >
+                <div class="flex items-start gap-3">
+                  <span
+                    class="mt-1 h-3 w-3 rounded-full shrink-0"
+                    :style="{ backgroundColor: group.color }"
+                  ></span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start gap-3">
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                          <AppIcon
+                            :name="group.icon || DEFAULT_CATEGORY_ICON"
+                            :size="16"
+                            class="shrink-0"
+                            :style="getCategoryStyle(group)"
+                          />
+                          <div
+                            class="truncate font-semibold"
+                            :style="
+                              group.color ? { color: group.color } : undefined
+                            "
+                          >
+                            {{ group.label }}
+                          </div>
+                        </div>
+                        <div class="mt-1 text-xs text-on-surface-secondary">
+                          {{ group.count }}笔
+                        </div>
+                      </div>
+                      <div class="shrink-0 text-right">
+                        <div class="font-semibold text-on-surface">
+                          {{ group.percentageText }}%
+                        </div>
+                        <div class="text-xs text-on-surface-secondary">
+                          {{ formatChartValue(group.total) }}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="mt-2 h-1.5 overflow-hidden rounded-full bg-border/60"
+                    >
+                      <div
+                        class="h-full rounded-full"
+                        :style="{
+                          width: group.percentageValue + '%',
+                          backgroundColor: group.color
+                        }"
+                      ></div>
+                    </div>
+                    <div
+                      class="mt-3 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <span class="text-on-surface-secondary">
+                        {{
+                          group.items.length
+                            ? `含${group.items.length}个小类`
+                            : '无小类'
+                        }}
+                      </span>
+                      <button
+                        v-if="group.items.length"
+                        type="button"
+                        class="font-medium text-primary"
+                        @click="toggleCategoryGroup('income', group.key)"
+                      >
+                        {{
+                          isCategoryGroupExpanded('income', group.key)
+                            ? '收起'
+                            : '展开'
+                        }}
+                      </button>
+                    </div>
+                    <div
+                      v-if="
+                        group.items.length &&
+                        isCategoryGroupExpanded('income', group.key)
+                      "
+                      class="mt-3 rounded-lg bg-surface-secondary/60 p-3 space-y-3"
+                    >
+                      <div
+                        v-for="item in group.items"
+                        :key="item.id"
+                        class="text-xs sm:text-sm"
+                      >
+                        <div class="flex items-start gap-2">
+                          <AppIcon
+                            :name="item.icon"
+                            :size="16"
+                            class="mt-0.5 shrink-0"
+                            :style="getCategoryStyle(item)"
+                          />
+                          <div class="min-w-0 flex-1">
+                            <div class="flex items-start gap-3">
+                              <div class="min-w-0 flex-1">
+                                <div
+                                  class="truncate"
+                                  :style="getCategoryStyle(item)"
+                                >
+                                  {{ item.name }}
+                                </div>
+                                <div
+                                  class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-on-surface-secondary"
+                                >
+                                  <span>{{ item.count }}笔</span>
+                                  <span class="font-medium text-on-surface">{{
+                                    formatChartValue(item.total)
+                                  }}</span>
+                                </div>
+                              </div>
+                              <div class="shrink-0 text-right">
+                                <div class="font-medium text-on-surface">
+                                  {{ item.percentageText }}%
+                                </div>
+                              </div>
+                            </div>
+                            <div
+                              class="mt-1.5 h-1 overflow-hidden rounded-full bg-border/50"
+                            >
+                              <div
+                                class="h-full rounded-full"
+                                :style="{
+                                  width: item.percentageValue + '%',
+                                  backgroundColor: item.color || group.color
+                                }"
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -182,19 +402,52 @@
       </div>
     </div>
 
-    <div class="card" v-if="trendData.length">
-      <h2 class="font-bold mb-3">趋势</h2>
+    <div v-if="trendData.length" class="space-y-3">
+      <!-- <h2 class="font-bold">趋势</h2> -->
       <p class="mb-2 text-xs text-on-surface-secondary sm:hidden">
         左右滑动可查看完整趋势。
       </p>
-      <SimpleChart type="bar" :data="barData" :height="trendChartHeight" />
-      <div class="mt-3 flex flex-wrap justify-center gap-4 text-xs">
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded-sm bg-emerald-500"></span> 收入
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded-sm bg-rose-500"></span> 支出
-        </span>
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div class="card">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <h3 class="font-bold text-rose-500">支出趋势</h3>
+            <span class="text-xs text-on-surface-secondary">{{
+              trendGranularityLabel
+            }}</span>
+          </div>
+          <SimpleChart
+            type="bar"
+            :data="expenseBarData"
+            :height="trendChartHeight"
+            :value-formatter="formatChartValue"
+          />
+          <!-- <div class="mt-1 flex justify-center text-xs">
+            <span class="flex items-center gap-1">
+              <span class="h-3 w-3 rounded-sm bg-rose-500"></span>
+              支出
+            </span>
+          </div> -->
+        </div>
+        <div class="card">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <h3 class="font-bold text-emerald-500">收入趋势</h3>
+            <span class="text-xs text-on-surface-secondary">{{
+              trendGranularityLabel
+            }}</span>
+          </div>
+          <SimpleChart
+            type="bar"
+            :data="incomeBarData"
+            :height="trendChartHeight"
+            :value-formatter="formatChartValue"
+          />
+          <!-- <div class="mt-1 flex justify-center text-xs">
+            <span class="flex items-center gap-1">
+              <span class="h-3 w-3 rounded-sm bg-emerald-500"></span>
+              收入
+            </span>
+          </div> -->
+        </div>
       </div>
     </div>
   </div>
@@ -202,6 +455,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { DEFAULT_CATEGORY_ICON } from '@shared/icon-names.js'
 import { useReportsStore } from '../stores/reports.js'
 import { useSettingsStore } from '../stores/settings.js'
 import StatCard from '../components/StatCard.vue'
@@ -221,11 +475,15 @@ const dateStr = ref(new Date().toISOString().split('T')[0])
 const selectedCurrency = ref('')
 const hasInitializedSelectedCurrency = ref(false)
 const isCompactViewport = ref(false)
+const expenseExpandedGroups = ref({})
+const incomeExpandedGroups = ref({})
 
 const summary = ref(null)
 const expenseCategoryReport = ref(null)
 const incomeCategoryReport = ref(null)
 const trendData = ref([])
+
+const categoryGroupLimit = 10
 
 const periods = [
   { value: 'day', label: '日' },
@@ -244,25 +502,46 @@ const currencySymbol = computed(() =>
 const expenseDonutData = computed(() =>
   buildParentCategoryDonutData(
     expenseCategoryReport.value?.categories || [],
-    10
+    categoryGroupLimit
   )
 )
 
 const incomeDonutData = computed(() =>
-  buildParentCategoryDonutData(incomeCategoryReport.value?.categories || [], 10)
+  buildParentCategoryDonutData(
+    incomeCategoryReport.value?.categories || [],
+    categoryGroupLimit
+  )
 )
 
-const barData = computed(() =>
+const expenseCategoryGroups = computed(() =>
+  buildCategoryGroups(expenseCategoryReport.value?.categories || [])
+)
+
+const incomeCategoryGroups = computed(() =>
+  buildCategoryGroups(incomeCategoryReport.value?.categories || [])
+)
+
+const incomeBarData = computed(() =>
   trendData.value.map(t => ({
     label: t.label,
-    series: [
-      { label: '收入', value: t.income || 0, color: '#10b981' },
-      { label: '支出', value: t.expense || 0, color: '#f43f5e' }
-    ]
+    value: t.income || 0,
+    color: '#10b981'
   }))
 )
 
-const trendChartHeight = computed(() => (isCompactViewport.value ? 150 : 180))
+const expenseBarData = computed(() =>
+  trendData.value.map(t => ({
+    label: t.label,
+    value: t.expense || 0,
+    color: '#f43f5e'
+  }))
+)
+
+const trendGranularityLabel = computed(() =>
+  period.value === 'year' ? '按月汇总' : '按日汇总'
+)
+
+const trendChartHeight = computed(() => (isCompactViewport.value ? 128 : 152))
 
 let compactViewportMediaQuery = null
 
@@ -279,6 +558,136 @@ function getCategoryStyle(category) {
   const color = getCategoryAccentColor(category)
   return color ? { color } : undefined
 }
+
+function formatChartValue(value) {
+  return settingsStore.formatMoney(
+    value,
+    selectedCurrency.value || settingsStore.settings.default_currency
+  )
+}
+
+function toggleCategoryGroup(type, key) {
+  const target =
+    type === 'expense' ? expenseExpandedGroups : incomeExpandedGroups
+
+  target.value = {
+    ...target.value,
+    [key]: !target.value[key]
+  }
+}
+
+function isCategoryGroupExpanded(type, key) {
+  const target =
+    type === 'expense' ? expenseExpandedGroups : incomeExpandedGroups
+  return Boolean(target.value[key])
+}
+
+function syncExpandedGroupState(currentState, groups) {
+  return Object.fromEntries(
+    groups.map(group => [group.key, currentState[group.key] ?? false])
+  )
+}
+
+function buildCategoryGroups(categories) {
+  if (!Array.isArray(categories) || categories.length === 0) {
+    return []
+  }
+
+  const groups = new Map()
+  const totalAmount = categories.reduce(
+    (sum, category) => sum + (Number(category.total) || 0),
+    0
+  )
+
+  categories.forEach(category => {
+    const key = category.parent_id
+      ? `parent-${category.parent_id}`
+      : `self-${category.id}`
+    const currentGroup = groups.get(key) || {
+      key,
+      label: category.parent_name || category.name,
+      icon: category.parent_id
+        ? category.parent_icon || category.icon
+        : category.icon,
+      color: getCategoryAccentColor(category),
+      total: 0,
+      count: 0,
+      items: []
+    }
+
+    currentGroup.total += Number(category.total) || 0
+    currentGroup.count += Number(category.count) || 0
+    currentGroup.icon =
+      currentGroup.icon ||
+      (category.parent_id
+        ? category.parent_icon || category.icon
+        : category.icon)
+    currentGroup.color = currentGroup.color || getCategoryAccentColor(category)
+
+    if (category.parent_id) {
+      const itemPercentage = Number(
+        category.percentage ??
+          (totalAmount > 0
+            ? ((Number(category.total) || 0) / totalAmount) * 100
+            : 0)
+      )
+
+      currentGroup.items.push({
+        id: category.id,
+        name: category.name,
+        icon: category.icon,
+        total: Number(category.total) || 0,
+        count: Number(category.count) || 0,
+        color: getCategoryAccentColor(category),
+        percentageText: itemPercentage.toFixed(1),
+        percentageValue: clampPercentage(itemPercentage)
+      })
+    }
+
+    groups.set(key, currentGroup)
+  })
+
+  return Array.from(groups.values())
+    .sort((left, right) => right.total - left.total)
+    .slice(0, categoryGroupLimit)
+    .map(group => {
+      const percentageValue =
+        totalAmount > 0 ? (group.total / totalAmount) * 100 : 0
+
+      return {
+        ...group,
+        percentageText: percentageValue.toFixed(1),
+        percentageValue: clampPercentage(percentageValue),
+        items: group.items.sort((left, right) => right.total - left.total)
+      }
+    })
+}
+
+function clampPercentage(value) {
+  return Math.min(Math.max(Number(value) || 0, 0), 100)
+}
+
+watch(
+  expenseCategoryGroups,
+  groups => {
+    expenseExpandedGroups.value = syncExpandedGroupState(
+      expenseExpandedGroups.value,
+      groups
+    )
+  },
+  { immediate: true }
+)
+
+watch(
+  incomeCategoryGroups,
+  groups => {
+    incomeExpandedGroups.value = syncExpandedGroupState(
+      incomeExpandedGroups.value,
+      groups
+    )
+  },
+  { immediate: true }
+)
 
 async function loadData() {
   summary.value = null

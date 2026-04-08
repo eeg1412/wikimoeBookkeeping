@@ -74,17 +74,12 @@
             >查看详情 →</router-link
           >
         </div>
-        <SimpleChart
+        <CategoryBreakdown
           v-if="expenseCategoryData?.categories?.length"
-          type="donut"
-          :data="expenseDonutData"
+          :categories="expenseCategoryData.categories"
+          :total="expenseCategoryData.total"
+          :value-formatter="formatChartValue"
           center-label="总支出"
-          :center-value="
-            settingsStore.formatMoney(
-              expenseCategoryData.total,
-              selectedCurrency
-            )
-          "
         />
         <div v-else class="text-center py-8 text-on-surface-secondary text-sm">
           暂无支出分类数据
@@ -98,17 +93,12 @@
             >查看详情 →</router-link
           >
         </div>
-        <SimpleChart
+        <CategoryBreakdown
           v-if="incomeCategoryData?.categories?.length"
-          type="donut"
-          :data="incomeDonutData"
+          :categories="incomeCategoryData.categories"
+          :total="incomeCategoryData.total"
+          :value-formatter="formatChartValue"
           center-label="总收入"
-          :center-value="
-            settingsStore.formatMoney(
-              incomeCategoryData.total,
-              selectedCurrency
-            )
-          "
         />
         <div v-else class="text-center py-8 text-on-surface-secondary text-sm">
           暂无收入分类数据
@@ -187,12 +177,9 @@ import { useSettingsStore } from '../stores/settings.js'
 import { useReportsStore } from '../stores/reports.js'
 import { api } from '../api/client.js'
 import StatCard from '../components/StatCard.vue'
-import SimpleChart from '../components/SimpleChart.vue'
+import CategoryBreakdown from '../components/CategoryBreakdown.vue'
 import AppIcon from '../components/AppIcon.vue'
-import {
-  buildParentCategoryDonutData,
-  getCategoryAccentColor
-} from '../utils/category-ui.js'
+import { getCategoryAccentColor } from '../utils/category-ui.js'
 
 const settingsStore = useSettingsStore()
 const reportsStore = useReportsStore()
@@ -212,17 +199,16 @@ const currencySymbol = computed(() =>
   )
 )
 
-const expenseDonutData = computed(() =>
-  buildParentCategoryDonutData(expenseCategoryData.value?.categories || [], 8)
-)
-
-const incomeDonutData = computed(() =>
-  buildParentCategoryDonutData(incomeCategoryData.value?.categories || [], 8)
-)
-
 function getTransactionCategoryStyle(transaction) {
   const color = getCategoryAccentColor(transaction)
   return color ? { color } : undefined
+}
+
+function formatChartValue(value) {
+  return settingsStore.formatMoney(
+    value,
+    selectedCurrency.value || settingsStore.settings.default_currency
+  )
 }
 
 async function loadData() {

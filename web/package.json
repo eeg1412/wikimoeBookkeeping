@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fluentui/svg-icons": "^1.1.323",
+    "echarts": "^6.0.0",
     "pinia": "^2.3.0",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"
