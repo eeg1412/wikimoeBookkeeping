@@ -143,6 +143,14 @@
         </span>
         <span class="text-[10px] font-medium text-primary">记账</span>
       </router-link>
+      <router-link
+        to="/categories"
+        class="flex flex-col items-center gap-0.5 text-[10px] font-medium text-on-surface-secondary min-w-[56px] py-1"
+        :class="isActive('/categories') ? '!text-primary' : ''"
+      >
+        <AppIcon name="categories" :size="22" />
+        <span>分类</span>
+      </router-link>
       <button
         @click="moreOpen = true"
         class="flex flex-col items-center gap-0.5 text-[10px] font-medium text-on-surface-secondary min-w-[56px] py-1"
