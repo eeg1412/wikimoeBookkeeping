@@ -81,7 +81,7 @@
     <div v-else class="space-y-2">
       <div v-for="(group, date) in groupedList" :key="date">
         <div
-          class="text-xs font-medium text-on-surface-secondary px-1 py-2 sticky top-14 lg:top-0 z-10"
+          class="text-xs font-medium text-on-surface-secondary px-1 py-2 sticky top-14 lg:top-0 z-10 bg-surface-secondary"
         >
           {{ date }}
           <span class="ml-2">
