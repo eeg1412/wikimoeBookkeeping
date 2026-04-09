@@ -3,8 +3,10 @@
     <h1 class="page-title">总览</h1>
 
     <div class="card">
-      <div class="flex flex-wrap gap-2 items-stretch sm:items-center">
-        <div class="flex w-full flex-wrap gap-1 sm:w-auto">
+      <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <div
+          class="col-span-2 flex w-full flex-wrap gap-1 sm:col-span-1 sm:w-auto"
+        >
           <button
             v-for="p in periods"
             :key="p.value"
@@ -15,16 +17,39 @@
             {{ p.label }}
           </button>
         </div>
+
+        <template v-if="period === 'custom'">
+          <DatePicker
+            v-model="customStartDate"
+            :week-start="Number(settingsStore.settings.week_start) || 1"
+            placeholder="开始日期"
+            input-class="min-w-0 w-full text-sm sm:w-36"
+            @change="handleCustomRangeChange('start', $event)"
+          />
+          <span
+            class="hidden self-center text-on-surface-secondary sm:inline-flex"
+            >至</span
+          >
+          <DatePicker
+            v-model="customEndDate"
+            :week-start="Number(settingsStore.settings.week_start) || 1"
+            align-right
+            placeholder="结束日期"
+            input-class="min-w-0 w-full text-sm sm:w-36"
+            @change="handleCustomRangeChange('end', $event)"
+          />
+        </template>
         <PeriodPicker
+          v-else
           v-model="dateStr"
           :period="period"
           :week-start="Number(settingsStore.settings.week_start) || 1"
-          class="w-full sm:w-auto"
+          class="col-span-2 w-full sm:w-auto"
           @update:model-value="loadData"
         />
         <select
           v-model="selectedCurrency"
-          class="select text-sm w-full sm:w-36"
+          class="select min-w-0 w-full text-sm sm:w-32"
           :disabled="!filterCurrencies.length"
           @change="loadData"
         >
@@ -520,7 +545,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, toRefs } from 'vue'
 import { DEFAULT_CATEGORY_ICON } from '@shared/icon-names.js'
 import { useReportsStore } from '../stores/reports.js'
 import { useSettingsStore } from '../stores/settings.js'
@@ -529,23 +554,41 @@ import StatCard from '../components/StatCard.vue'
 import SimpleChart from '../components/SimpleChart.vue'
 import AppIcon from '../components/AppIcon.vue'
 import PeriodPicker from '../components/PeriodPicker.vue'
+import DatePicker from '../components/DatePicker.vue'
 import { getLocalToday } from '../utils/date.js'
 import {
   buildParentCategoryGroups,
   buildParentCategoryDonutData,
   getCategoryAccentColor
 } from '../utils/category-ui.js'
+import { useCachedViewState } from '../composables/useCachedViewState.js'
+
+const REPORTS_VIEW_STATE_KEY = 'reports:overview'
 
 const reportsStore = useReportsStore()
 const settingsStore = useSettingsStore()
 
-const period = ref('month')
-const dateStr = ref(getLocalToday())
-const selectedCurrency = ref('')
-const hasInitializedSelectedCurrency = ref(false)
+const today = getLocalToday()
+const { state: reportViewState } = useCachedViewState(REPORTS_VIEW_STATE_KEY, {
+  period: 'month',
+  dateStr: today,
+  selectedCurrency: '',
+  customStartDate: getMonthStart(today),
+  customEndDate: today,
+  expenseExpandedGroups: {},
+  incomeExpandedGroups: {}
+})
+const {
+  period,
+  dateStr,
+  selectedCurrency,
+  customStartDate,
+  customEndDate,
+  expenseExpandedGroups,
+  incomeExpandedGroups
+} = toRefs(reportViewState)
+
 const isCompactViewport = ref(false)
-const expenseExpandedGroups = ref({})
-const incomeExpandedGroups = ref({})
 
 const summary = ref(null)
 const expenseCategoryReport = ref(null)
@@ -559,9 +602,11 @@ const periods = [
   { value: 'day', label: '日' },
   { value: 'week', label: '周' },
   { value: 'month', label: '月' },
-  { value: 'year', label: '年' }
+  { value: 'year', label: '年' },
+  { value: 'custom', label: '自由' }
 ]
 
+const isCustomRange = computed(() => period.value === 'custom')
 const filterCurrencies = computed(() => settingsStore.getFilterCurrencies())
 const currencySymbol = computed(() =>
   settingsStore.getCurrencySymbol(
@@ -613,13 +658,36 @@ const expenseBarData = computed(() =>
   }))
 )
 
-const trendGranularityLabel = computed(() =>
-  period.value === 'year' ? '按月汇总' : '按日汇总'
-)
+const trendPeriod = computed(() => getTrendPeriod())
+const trendGranularityLabel = computed(() => {
+  if (trendPeriod.value === 'year') {
+    return '按年汇总'
+  }
+
+  if (trendPeriod.value === 'month') {
+    return '按月汇总'
+  }
+
+  if (trendPeriod.value === 'week') {
+    return '按周汇总'
+  }
+
+  return '按日汇总'
+})
 
 const trendChartHeight = computed(() => (isCompactViewport.value ? 128 : 152))
 
 let compactViewportMediaQuery = null
+
+function getMonthStart(dateValue) {
+  return `${dateValue.slice(0, 7)}-01`
+}
+
+function getDaysBetween(start, end) {
+  const startTime = new Date(start + 'T00:00:00').getTime()
+  const endTime = new Date(end + 'T00:00:00').getTime()
+  return Math.floor((endTime - startTime) / 86400000) + 1
+}
 
 function handleCompactViewportChange(event) {
   isCompactViewport.value = event.matches
@@ -627,6 +695,24 @@ function handleCompactViewportChange(event) {
 
 function selectPeriod(nextPeriod) {
   period.value = nextPeriod
+
+  if (nextPeriod === 'custom') {
+    normalizeCustomRange()
+  }
+
+  loadData()
+}
+
+function handleCustomRangeChange(field, value) {
+  const nextValue = value || getLocalToday()
+
+  if (field === 'start') {
+    customStartDate.value = nextValue
+  } else {
+    customEndDate.value = nextValue
+  }
+
+  normalizeCustomRange(field)
   loadData()
 }
 
@@ -669,6 +755,115 @@ function syncExpandedGroupState(currentState, groups) {
   )
 }
 
+function normalizeCustomRange(changedField) {
+  const fallbackDate = getLocalToday()
+
+  if (!customStartDate.value && !customEndDate.value) {
+    customStartDate.value = fallbackDate
+    customEndDate.value = fallbackDate
+  } else if (!customStartDate.value) {
+    customStartDate.value = customEndDate.value || fallbackDate
+  } else if (!customEndDate.value) {
+    customEndDate.value = customStartDate.value || fallbackDate
+  }
+
+  if (customStartDate.value > customEndDate.value) {
+    if (changedField === 'end') {
+      customStartDate.value = customEndDate.value
+    } else {
+      customEndDate.value = customStartDate.value
+    }
+  }
+
+  return {
+    start: customStartDate.value,
+    end: customEndDate.value
+  }
+}
+
+function getPresetDateRange(
+  periodValue = period.value,
+  dateValue = dateStr.value
+) {
+  const d = new Date(dateValue + 'T00:00:00')
+  const y = d.getFullYear()
+  const m = d.getMonth()
+
+  switch (periodValue) {
+    case 'day':
+      return { start: dateValue, end: dateValue }
+    case 'week': {
+      const ws = Number(settingsStore.settings.week_start) || 1
+      const s = new Date(d)
+      s.setDate(s.getDate() - ((s.getDay() - ws + 7) % 7))
+      const e = new Date(s)
+      e.setDate(e.getDate() + 6)
+      return { start: fmt(s), end: fmt(e) }
+    }
+    case 'month':
+      return {
+        start: `${y}-${String(m + 1).padStart(2, '0')}-01`,
+        end: `${y}-${String(m + 1).padStart(2, '0')}-${String(new Date(y, m + 1, 0).getDate()).padStart(2, '0')}`
+      }
+    case 'year':
+      return { start: `${y}-01-01`, end: `${y}-12-31` }
+    default:
+      return { start: dateValue, end: dateValue }
+  }
+}
+
+function getSelectedDateRange() {
+  if (isCustomRange.value) {
+    return normalizeCustomRange()
+  }
+
+  return getPresetDateRange()
+}
+
+function getReportQueryParams() {
+  const baseParams = {
+    period: period.value,
+    currency: selectedCurrency.value || undefined
+  }
+
+  if (isCustomRange.value) {
+    const { start, end } = getSelectedDateRange()
+    return {
+      ...baseParams,
+      start_date: start,
+      end_date: end
+    }
+  }
+
+  return {
+    ...baseParams,
+    date: dateStr.value
+  }
+}
+
+function getTrendPeriod() {
+  if (!isCustomRange.value) {
+    return period.value === 'year' ? 'month' : 'day'
+  }
+
+  const { start, end } = getSelectedDateRange()
+  const totalDays = getDaysBetween(start, end)
+
+  if (totalDays <= 31) {
+    return 'day'
+  }
+
+  if (totalDays <= 180) {
+    return 'week'
+  }
+
+  if (totalDays <= 730) {
+    return 'month'
+  }
+
+  return 'year'
+}
+
 watch(
   expenseCategoryGroups,
   groups => {
@@ -698,17 +893,17 @@ async function loadData() {
   trendData.value = []
   recentTxns.value = []
 
-  const params = {
-    period: period.value,
-    date: dateStr.value,
-    currency: selectedCurrency.value || undefined
-  }
+  const reportParams = getReportQueryParams()
+  const selectedRange = getSelectedDateRange()
 
   summary.value = await reportsStore
-    .fetchSummary(params)
+    .fetchSummary(reportParams)
     .then(() => reportsStore.summary)
   // loadRecentTransactions() 暂时不加载最近账目，避免接口响应过慢影响体验
-  await Promise.all([loadCategories(), loadTrend()])
+  await Promise.all([
+    loadCategories(reportParams),
+    loadTrend(selectedRange.start, selectedRange.end)
+  ])
 }
 
 async function loadRecentTransactions() {
@@ -725,13 +920,7 @@ async function loadRecentTransactions() {
   recentTxns.value = data.list
 }
 
-async function loadCategories() {
-  const baseParams = {
-    period: period.value,
-    date: dateStr.value,
-    currency: selectedCurrency.value || undefined
-  }
-
+async function loadCategories(baseParams = getReportQueryParams()) {
   const [expenseData, incomeData] = await Promise.all([
     reportsStore.fetchCategoryReport({ ...baseParams, type: 'expense' }),
     reportsStore.fetchCategoryReport({ ...baseParams, type: 'income' })
@@ -741,42 +930,14 @@ async function loadCategories() {
   incomeCategoryReport.value = incomeData
 }
 
-async function loadTrend() {
-  const { start, end } = getDateRange()
+async function loadTrend(start, end) {
   await reportsStore.fetchTrend({
-    period: period.value === 'year' ? 'month' : 'day',
-    start_date: start,
-    end_date: end,
+    period: trendPeriod.value,
+    start_date: start || getSelectedDateRange().start,
+    end_date: end || getSelectedDateRange().end,
     currency: selectedCurrency.value || undefined
   })
   trendData.value = reportsStore.trend
-}
-
-function getDateRange() {
-  const d = new Date(dateStr.value)
-  const y = d.getFullYear()
-  const m = d.getMonth()
-  switch (period.value) {
-    case 'day':
-      return { start: dateStr.value, end: dateStr.value }
-    case 'week': {
-      const ws = Number(settingsStore.settings.week_start) || 1
-      const s = new Date(d)
-      s.setDate(s.getDate() - ((s.getDay() - ws + 7) % 7))
-      const e = new Date(s)
-      e.setDate(e.getDate() + 6)
-      return { start: fmt(s), end: fmt(e) }
-    }
-    case 'month':
-      return {
-        start: `${y}-${String(m + 1).padStart(2, '0')}-01`,
-        end: `${y}-${String(m + 1).padStart(2, '0')}-${String(new Date(y, m + 1, 0).getDate()).padStart(2, '0')}`
-      }
-    case 'year':
-      return { start: `${y}-01-01`, end: `${y}-12-31` }
-    default:
-      return { start: dateStr.value, end: dateStr.value }
-  }
 }
 
 function fmt(date) {
@@ -787,21 +948,19 @@ watch(
   [filterCurrencies, () => settingsStore.settings.default_currency],
   ([list]) => {
     if (!list.length) {
-      selectedCurrency.value = ''
+      if (selectedCurrency.value) {
+        selectedCurrency.value = ''
+      }
       loadData()
       return
     }
 
-    const nextCurrency = settingsStore.getPreferredFilterCurrencyCode(list)
-
-    if (!hasInitializedSelectedCurrency.value) {
-      selectedCurrency.value = nextCurrency
-      hasInitializedSelectedCurrency.value = true
-    } else if (
+    if (
       !selectedCurrency.value ||
       !list.some(item => item.code === selectedCurrency.value)
     ) {
-      selectedCurrency.value = nextCurrency
+      selectedCurrency.value =
+        settingsStore.getPreferredFilterCurrencyCode(list)
     }
 
     loadData()

@@ -3,6 +3,14 @@ import { defineStore } from 'pinia'
 import { api } from '../api/client.js'
 import { useSettingsStore } from './settings.js'
 
+function normalizeFilters(filters = {}) {
+  return Object.fromEntries(
+    Object.entries(filters).filter(
+      ([, value]) => value !== undefined && value !== ''
+    )
+  )
+}
+
 export const useTransactionsStore = defineStore('transactions', () => {
   const settingsStore = useSettingsStore()
   const list = ref([])
@@ -52,9 +60,24 @@ export const useTransactionsStore = defineStore('transactions', () => {
     await Promise.all([fetch(), settingsStore.fetchUsedCurrencies()])
   }
 
-  function setFilters(f) {
-    filters.value = f
-    page.value = 1
+  function setFilters(nextFilters, options = {}) {
+    filters.value = normalizeFilters(nextFilters)
+    if (options.resetPage ?? true) {
+      page.value = 1
+    }
+  }
+
+  function setPage(nextPage) {
+    const normalizedPage = Number(nextPage)
+    page.value =
+      Number.isInteger(normalizedPage) && normalizedPage > 0
+        ? normalizedPage
+        : 1
+  }
+
+  function restoreState(state = {}) {
+    filters.value = normalizeFilters(state.filters)
+    setPage(state.page)
   }
 
   return {
@@ -68,6 +91,8 @@ export const useTransactionsStore = defineStore('transactions', () => {
     create,
     update,
     remove,
-    setFilters
+    setFilters,
+    setPage,
+    restoreState
   }
 })

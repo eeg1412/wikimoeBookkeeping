@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '../api/client.js'
+import { useViewStateStore } from './viewState.js'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -22,6 +23,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    const viewStateStore = useViewStateStore()
+
     // 通知服务端废弃 refresh token（忽略失败）
     if (refreshToken.value) {
       api
@@ -31,6 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = ''
     refreshToken.value = ''
     username.value = ''
+    viewStateStore.clearAll()
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('username')

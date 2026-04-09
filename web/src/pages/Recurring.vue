@@ -95,16 +95,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, toRefs } from 'vue'
 import { useRecurringStore } from '../stores/recurring.js'
 import { useSettingsStore } from '../stores/settings.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { getCategoryAccentColor } from '../utils/category-ui.js'
+import { useCachedViewState } from '../composables/useCachedViewState.js'
+
+const RECURRING_LIST_STATE_KEY = 'recurring:list'
 
 const store = useRecurringStore()
 const settingsStore = useSettingsStore()
 const deletingRule = ref(null)
+const { state: recurringViewState, saveState: saveRecurringViewState } =
+  useCachedViewState(RECURRING_LIST_STATE_KEY, {
+    scrollY: 0
+  })
+const { scrollY } = toRefs(recurringViewState)
 
 const FREQ_MAP = {
   daily: '每天',
@@ -147,5 +155,22 @@ async function handleDelete() {
   deletingRule.value = null
 }
 
-onMounted(() => store.fetch())
+function saveScrollPosition() {
+  scrollY.value = Math.round(window.scrollY || window.pageYOffset || 0)
+  saveRecurringViewState()
+}
+
+async function loadRules() {
+  await store.fetch()
+  await nextTick()
+
+  if (scrollY.value > 0) {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY.value, behavior: 'auto' })
+    })
+  }
+}
+
+onMounted(loadRules)
+onBeforeUnmount(saveScrollPosition)
 </script>

@@ -95,12 +95,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, toRefs } from 'vue'
 import { api } from '../api/client.js'
+import { useCachedViewState } from '../composables/useCachedViewState.js'
+
+const LOGIN_ATTEMPTS_STATE_KEY = 'login-attempts:list'
+
+const { state: listState } = useCachedViewState(LOGIN_ATTEMPTS_STATE_KEY, {
+  page: 1
+})
+const { page } = toRefs(listState)
 
 const list = ref([])
 const total = ref(0)
-const page = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
 const browserDateTimeFormatter = new Intl.DateTimeFormat(undefined, {

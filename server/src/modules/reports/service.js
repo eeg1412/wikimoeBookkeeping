@@ -1,8 +1,13 @@
 import { getDb } from '../../db/init.js'
 
-export function getSummary({ period, date, currency }) {
+export function getSummary({ period, date, start_date, end_date, currency }) {
   const db = getDb()
-  const { start, end } = getDateRange(period, date)
+  const { start, end } = resolveDateRange({
+    period,
+    date,
+    start_date,
+    end_date
+  })
 
   const income = getTypeSummary(db, 'income', start, end, currency)
   const expense = getTypeSummary(db, 'expense', start, end, currency)
@@ -65,11 +70,18 @@ export function getTrend({ period, start_date, end_date, type, currency }) {
 export function getCategoryReport({
   period,
   date,
+  start_date,
+  end_date,
   type = 'expense',
   currency
 }) {
   const db = getDb()
-  const { start, end } = getDateRange(period, date)
+  const { start, end } = resolveDateRange({
+    period,
+    date,
+    start_date,
+    end_date
+  })
   const params = [type, start, end]
   const currencyClause = currency ? 'AND t.currency = ?' : ''
 
@@ -123,6 +135,22 @@ function getTypeSummary(db, type, start, end, currency) {
        WHERE type=? AND date>=? AND date<=? AND is_deleted=0 ${currencyClause}`
     )
     .get(type, ...params)
+}
+
+function resolveDateRange({ period, date, start_date, end_date }) {
+  if (period === 'custom') {
+    if (!start_date || !end_date) {
+      throw new Error('请指定时间区间')
+    }
+
+    if (start_date > end_date) {
+      throw new Error('开始时间不能晚于结束时间')
+    }
+
+    return { start: start_date, end: end_date }
+  }
+
+  return getDateRange(period, date)
 }
 
 function getDateRange(period, dateStr) {

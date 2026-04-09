@@ -40,7 +40,7 @@
           clearable
           placeholder="开始日期"
           input-class="min-w-0 w-full text-sm sm:w-36"
-          @change="applyFilter"
+          @change="handleFilterDateChange('from', $event)"
         />
         <span
           class="hidden self-center text-on-surface-secondary sm:inline-flex"
@@ -53,7 +53,7 @@
           align-right
           placeholder="结束日期"
           input-class="min-w-0 w-full text-sm sm:w-36"
-          @change="applyFilter"
+          @change="handleFilterDateChange('to', $event)"
         />
         <button
           v-if="hasFilter"
@@ -189,7 +189,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, toRefs } from 'vue'
 import { DEFAULT_CATEGORY_ICON } from '@shared/icon-names.js'
 import { useTransactionsStore } from '../stores/transactions.js'
 import { useSettingsStore } from '../stores/settings.js'
@@ -197,6 +197,9 @@ import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { getCategoryAccentColor } from '../utils/category-ui.js'
 import DatePicker from '../components/DatePicker.vue'
+import { useCachedViewState } from '../composables/useCachedViewState.js'
+
+const TRANSACTIONS_LIST_STATE_KEY = 'transactions:list'
 
 const store = useTransactionsStore()
 const settingsStore = useSettingsStore()
@@ -228,11 +231,18 @@ function getTransactionCategoryStyle(transaction) {
   return color ? { color } : undefined
 }
 
-const filterType = ref('')
-const filterDateFrom = ref('')
-const filterDateTo = ref('')
-const filterCurrency = ref('')
-const hasInitializedFilterCurrency = ref(false)
+const { state: listState, resetState: resetListState } = useCachedViewState(
+  TRANSACTIONS_LIST_STATE_KEY,
+  {
+    filterType: '',
+    filterDateFrom: '',
+    filterDateTo: '',
+    filterCurrency: '',
+    page: 1
+  }
+)
+const { filterType, filterDateFrom, filterDateTo, filterCurrency, page } =
+  toRefs(listState)
 const filterCurrencies = computed(() => settingsStore.getFilterCurrencies())
 const activeCurrencyCode = computed(
   () => filterCurrency.value || settingsStore.settings.default_currency
@@ -255,50 +265,103 @@ const groupedList = computed(() => {
   return groups
 })
 
-function applyFilter() {
-  store.setFilters({
+function getCurrentFilters() {
+  return {
     currency: filterCurrency.value || undefined,
     type: filterType.value || undefined,
     date_from: filterDateFrom.value || undefined,
     date_to: filterDateTo.value || undefined
+  }
+}
+
+function normalizeFilterDateRange(changedField) {
+  if (!filterDateFrom.value || !filterDateTo.value) {
+    return
+  }
+
+  if (filterDateFrom.value <= filterDateTo.value) {
+    return
+  }
+
+  if (changedField === 'to') {
+    filterDateFrom.value = filterDateTo.value
+    return
+  }
+
+  filterDateTo.value = filterDateFrom.value
+}
+
+function handleFilterDateChange(field, value) {
+  if (field === 'from') {
+    filterDateFrom.value = value
+  } else {
+    filterDateTo.value = value
+  }
+
+  normalizeFilterDateRange(field)
+  applyFilter()
+}
+
+function syncListState({ resetPage = false } = {}) {
+  if (resetPage) {
+    page.value = 1
+  }
+
+  store.restoreState({
+    filters: getCurrentFilters(),
+    page: page.value
   })
+}
+
+function applyFilter() {
+  syncListState({ resetPage: true })
   store.fetch()
 }
 
 function clearFilter() {
-  filterType.value = ''
-  filterDateFrom.value = ''
-  filterDateTo.value = ''
+  resetListState({
+    filterCurrency: filterCurrency.value
+  })
   applyFilter()
 }
 
-function changePage(p) {
-  store.page = p
+function changePage(nextPage) {
+  page.value = nextPage
+  syncListState()
   store.fetch()
 }
+
+watch(
+  () => store.page,
+  nextPage => {
+    if (nextPage && page.value !== nextPage) {
+      page.value = nextPage
+    }
+  }
+)
 
 watch(
   [filterCurrencies, () => settingsStore.settings.default_currency],
   ([list]) => {
     if (!list.length) {
-      filterCurrency.value = ''
-      applyFilter()
+      if (filterCurrency.value) {
+        filterCurrency.value = ''
+      }
+
+      syncListState()
+      store.fetch()
       return
     }
 
-    const nextCurrency = settingsStore.getPreferredFilterCurrencyCode(list)
-
-    if (!hasInitializedFilterCurrency.value) {
-      filterCurrency.value = nextCurrency
-      hasInitializedFilterCurrency.value = true
-    } else if (
+    if (
       !filterCurrency.value ||
       !list.some(item => item.code === filterCurrency.value)
     ) {
-      filterCurrency.value = nextCurrency
+      filterCurrency.value = settingsStore.getPreferredFilterCurrencyCode(list)
     }
 
-    applyFilter()
+    syncListState()
+    store.fetch()
   },
   { immediate: true, flush: 'post' }
 )

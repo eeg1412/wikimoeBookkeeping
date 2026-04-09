@@ -14,6 +14,10 @@ export function listTransactions({
   const where = ['t.is_deleted = 0']
   const params = []
 
+  if (date_from && date_to && date_from > date_to) {
+    throw new Error('开始时间不能晚于结束时间')
+  }
+
   if (type) {
     where.push('t.type = ?')
     params.push(type)

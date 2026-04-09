@@ -4,9 +4,21 @@ import { json, error } from '../../utils/response.js'
 export function registerReportRoutes(router) {
   router.get('/api/reports/summary', (req, res) => {
     try {
-      const { period, date, currency } = req.query
+      const { period, date, currency, start_date, end_date } = req.query
       if (!period) return error(res, '请指定统计周期')
-      json(res, service.getSummary({ period, date, currency }))
+      if (period === 'custom' && (!start_date || !end_date)) {
+        return error(res, '请指定时间区间')
+      }
+      json(
+        res,
+        service.getSummary({
+          period,
+          date,
+          currency,
+          start_date,
+          end_date
+        })
+      )
     } catch (e) {
       error(res, e.message)
     }
@@ -27,9 +39,22 @@ export function registerReportRoutes(router) {
 
   router.get('/api/reports/category', (req, res) => {
     try {
-      const { period, date, type, currency } = req.query
+      const { period, date, type, currency, start_date, end_date } = req.query
       if (!period) return error(res, '请指定统计周期')
-      json(res, service.getCategoryReport({ period, date, type, currency }))
+      if (period === 'custom' && (!start_date || !end_date)) {
+        return error(res, '请指定时间区间')
+      }
+      json(
+        res,
+        service.getCategoryReport({
+          period,
+          date,
+          type,
+          currency,
+          start_date,
+          end_date
+        })
+      )
     } catch (e) {
       error(res, e.message)
     }
