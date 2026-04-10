@@ -1,31 +1,17 @@
 <template>
-  <div class="flex items-center gap-1 relative" ref="rootEl">
-    <button
-      class="btn-sm btn-secondary px-2"
-      @click="navigate(-1)"
-      :title="prevTitle"
-    >
+  <div :class="rootClasses" ref="rootEl">
+    <button :class="navButtonClasses" @click="navigate(-1)" :title="prevTitle">
       ◀
     </button>
-    <button
-      class="btn-sm btn-secondary px-1 min-w-[7rem] text-center font-medium whitespace-nowrap"
-      @click="togglePanel"
-    >
-      {{ displayLabel }}
+    <button :class="labelButtonClasses" @click="togglePanel">
+      <span :class="labelTextClasses">{{ displayLabel }}</span>
     </button>
-    <button
-      class="btn-sm btn-secondary px-2"
-      @click="navigate(1)"
-      :title="nextTitle"
-    >
+    <button :class="navButtonClasses" @click="navigate(1)" :title="nextTitle">
       ▶
     </button>
 
     <!-- Picker Panel -->
-    <div
-      v-if="panelOpen"
-      class="absolute top-full left-0 mt-1 z-50 bg-surface border border-border rounded-xl shadow-lg p-3 min-w-[280px]"
-    >
+    <div v-if="panelOpen" :class="panelClasses">
       <!-- Day / Week mode: calendar -->
       <template v-if="period === 'day' || period === 'week'">
         <div class="flex items-center justify-between mb-2">
@@ -160,7 +146,8 @@ const props = defineProps({
     required: true,
     validator: v => ['day', 'week', 'month', 'year'].includes(v)
   },
-  weekStart: { type: Number, default: 1 }
+  weekStart: { type: Number, default: 1 },
+  mobileFullWidth: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -241,6 +228,38 @@ const prevTitle = computed(() => {
 const nextTitle = computed(() => {
   const map = { day: '下一天', week: '下一周', month: '下一月', year: '下一年' }
   return map[props.period] || '下一个'
+})
+
+const rootClasses = computed(() => {
+  if (props.mobileFullWidth) {
+    return 'relative grid w-full grid-cols-[2.5rem,minmax(0,1fr),2.5rem] items-center gap-1 sm:inline-flex sm:w-auto sm:grid-cols-none'
+  }
+  return 'relative flex items-center gap-1'
+})
+
+const navButtonClasses = computed(() => {
+  if (props.mobileFullWidth) {
+    return 'btn-sm btn-secondary min-w-[2.5rem] px-0 sm:px-2'
+  }
+  return 'btn-sm btn-secondary px-2'
+})
+
+const labelButtonClasses = computed(() => {
+  if (props.mobileFullWidth) {
+    return 'btn-sm btn-secondary min-w-0 overflow-hidden px-2 text-center font-medium whitespace-nowrap sm:min-w-[7rem] sm:px-1'
+  }
+  return 'btn-sm btn-secondary px-1 min-w-[7rem] text-center font-medium whitespace-nowrap'
+})
+
+const labelTextClasses = computed(() => {
+  return props.mobileFullWidth ? 'block truncate' : ''
+})
+
+const panelClasses = computed(() => {
+  if (props.mobileFullWidth) {
+    return 'absolute top-full left-0 z-50 mt-1 w-full min-w-0 rounded-xl border border-border bg-surface p-3 shadow-lg sm:w-auto sm:min-w-[280px]'
+  }
+  return 'absolute top-full left-0 mt-1 z-50 bg-surface border border-border rounded-xl shadow-lg p-3 min-w-[280px]'
 })
 
 // Navigate

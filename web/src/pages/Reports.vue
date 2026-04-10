@@ -3,14 +3,16 @@
     <h1 class="page-title">总览</h1>
 
     <div class="card">
-      <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+      <div
+        class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
+      >
         <div
-          class="col-span-2 flex w-full flex-wrap gap-1 sm:col-span-1 sm:w-auto"
+          class="grid w-full grid-cols-5 gap-1 sm:flex sm:w-auto sm:flex-wrap"
         >
           <button
             v-for="p in periods"
             :key="p.value"
-            class="btn-sm"
+            class="btn-sm w-full sm:w-auto"
             :class="period === p.value ? 'btn-primary' : 'btn-secondary'"
             @click="selectPeriod(p.value)"
           >
@@ -44,7 +46,8 @@
           v-model="dateStr"
           :period="period"
           :week-start="Number(settingsStore.settings.week_start) || 1"
-          class="col-span-2 w-full sm:w-auto"
+          mobile-full-width
+          class="w-full sm:w-auto"
           @update:model-value="loadData"
         />
         <select

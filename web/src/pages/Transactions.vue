@@ -49,8 +49,8 @@
           @change="handleTypeChange"
         >
           <option value="">全部</option>
-          <option value="income">收入</option>
           <option value="expense">支出</option>
+          <option value="income">收入</option>
         </select>
         <select
           v-if="!isCategoryScopedPage"
@@ -66,6 +66,7 @@
             v-for="category in parentCategoryOptions"
             :key="category.id"
             :value="String(category.id)"
+            :style="getParentCategoryOptionStyle(category)"
           >
             {{ formatParentCategoryOption(category) }}
           </option>
@@ -322,6 +323,24 @@ const {
   page
 } = toRefs(listState)
 
+const parentCategoryTypeOrder = {
+  expense: 0,
+  income: 1
+}
+
+function getParentCategoryOptionStyle(category) {
+  if (!category) {
+    return undefined
+  }
+
+  return {
+    backgroundColor:
+      category.type === 'expense'
+        ? 'color-mix(in srgb, rgb(var(--color-surface)) 88%, rgb(239 68 68) 12%)'
+        : 'color-mix(in srgb, rgb(var(--color-surface)) 88%, rgb(34 197 94) 12%)'
+  }
+}
+
 const selectedTypeValue = computed({
   get() {
     return scopedCategory.value?.type || filterType.value
@@ -336,9 +355,18 @@ const selectedTypeValue = computed({
 })
 const parentCategoryOptions = computed(() => {
   const activeType = filterType.value || scopedCategory.value?.type || ''
-
-  return categoriesStore.tree.filter(
+  const categories = categoriesStore.tree.filter(
     category => !activeType || category.type === activeType
+  )
+
+  if (activeType) {
+    return categories
+  }
+
+  return [...categories].sort(
+    (left, right) =>
+      (parentCategoryTypeOrder[left.type] ?? Number.MAX_SAFE_INTEGER) -
+      (parentCategoryTypeOrder[right.type] ?? Number.MAX_SAFE_INTEGER)
   )
 })
 const selectedParentCategoryId = computed({
@@ -361,16 +389,18 @@ const selectedParentCategoryId = computed({
     filterParentCategoryId.value = value
   }
 })
-const childCategoryOptions = computed(() => {
-  const selectedParent =
+const selectedParentCategory = computed(
+  () =>
     parentCategoryOptions.value.find(
       category => String(category.id) === selectedParentCategoryId.value
     ) ||
     categoriesStore.tree.find(
       category => String(category.id) === selectedParentCategoryId.value
-    )
-
-  return selectedParent?.children || []
+    ) ||
+    null
+)
+const childCategoryOptions = computed(() => {
+  return selectedParentCategory.value?.children || []
 })
 const selectedChildCategoryId = computed({
   get() {
