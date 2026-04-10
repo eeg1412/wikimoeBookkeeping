@@ -285,7 +285,11 @@
         </button>
         <button
           class="btn-primary btn-sm"
-          :disabled="!migrationTargetOptions.length || !migrationTargetId || migrationSubmitting"
+          :disabled="
+            !migrationTargetOptions.length ||
+            !migrationTargetId ||
+            migrationSubmitting
+          "
           @click="openMigrationFinalConfirm"
         >
           确认
@@ -695,10 +699,16 @@ function formatCategoryPathName(category) {
     ? categoryLookup.value.get(category.parent_id)
     : null
 
-  return parentCategory ? `${parentCategory.name} / ${category.name}` : category.name
+  return parentCategory
+    ? `${parentCategory.name} / ${category.name}`
+    : category.name
 }
 
-function buildMigrationSuccessMessage(result, targetCategory, sourceCategoryName) {
+function buildMigrationSuccessMessage(
+  result,
+  targetCategory,
+  sourceCategoryName
+) {
   const segments = []
 
   if (result.migrated_transaction_count > 0) {

@@ -253,8 +253,7 @@ function buildDeleteCategoryPlan(db, category) {
   const { childCategoryCount, transactionCount, recurringRuleCount } =
     getDeleteCategoryUsage(db, category.id)
   const requiresMigration =
-    childCategoryCount === 0 &&
-    (transactionCount > 0 || recurringRuleCount > 0)
+    childCategoryCount === 0 && (transactionCount > 0 || recurringRuleCount > 0)
 
   return {
     category,
