@@ -1,5 +1,6 @@
 import { getDb } from '../../db/init.js'
 import { refreshUsedCurrenciesCache } from '../settings/service.js'
+import { assertNoCategoryDeletionWriteLock } from '../categories/operation-lock.js'
 
 export function listTransactions({
   page = 1,
@@ -90,6 +91,7 @@ export function createTransaction({
   source
 }) {
   const db = getDb()
+  assertNoCategoryDeletionWriteLock(db)
 
   const cat = db
     .prepare('SELECT * FROM categories WHERE id = ? AND is_deleted = 0')
@@ -122,6 +124,7 @@ export function updateTransaction(
   { type, amount, currency, category_id, note, date }
 ) {
   const db = getDb()
+  assertNoCategoryDeletionWriteLock(db)
   const txn = getTransaction(id)
   if (!txn) throw new Error('账目不存在')
 
@@ -165,6 +168,7 @@ export function updateTransaction(
 
 export function deleteTransaction(id) {
   const db = getDb()
+  assertNoCategoryDeletionWriteLock(db)
   const txn = getTransaction(id)
   if (!txn) throw new Error('账目不存在')
 

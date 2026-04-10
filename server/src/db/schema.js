@@ -91,6 +91,17 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS category_operation_locks (
+  lock_key TEXT PRIMARY KEY,
+  token TEXT NOT NULL,
+  source_category_id INTEGER NOT NULL,
+  target_category_id INTEGER DEFAULT NULL,
+  reason TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id) WHERE is_deleted = 0;
 CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(type) WHERE is_deleted = 0;
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date) WHERE is_deleted = 0;
@@ -102,6 +113,7 @@ CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip, created_a
 CREATE INDEX IF NOT EXISTS idx_login_attempts_created ON login_attempts(created_at);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_hash ON refresh_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_category_operation_locks_expires ON category_operation_locks(expires_at);
 `
 
 export const DEFAULT_SETTINGS = {

@@ -1,5 +1,6 @@
 import { getDb } from '../../db/init.js'
 import { createTransaction } from '../transactions/service.js'
+import { assertNoCategoryDeletionWriteLock } from '../categories/operation-lock.js'
 
 export function listRules() {
   const db = getDb()
@@ -48,11 +49,13 @@ export function createRule({
   end_date
 }) {
   const db = getDb()
+  assertNoCategoryDeletionWriteLock(db)
 
   const cat = db
     .prepare('SELECT * FROM categories WHERE id = ? AND is_deleted = 0')
     .get(category_id)
   if (!cat) throw new Error('分类不存在')
+  if (cat.type !== type) throw new Error('分类类型与规则类型不一致')
 
   const result = db
     .prepare(
@@ -85,8 +88,23 @@ export function createRule({
 
 export function updateRule(id, data) {
   const db = getDb()
+  assertNoCategoryDeletionWriteLock(db)
   const rule = getRule(id)
   if (!rule) throw new Error('规则不存在')
+
+  const nextType = data.type ?? rule.type
+  const nextCategoryId = data.category_id ?? rule.category_id
+  const nextCategory = db
+    .prepare('SELECT * FROM categories WHERE id = ? AND is_deleted = 0')
+    .get(nextCategoryId)
+
+  if (!nextCategory) {
+    throw new Error('分类不存在')
+  }
+
+  if (nextCategory.type !== nextType) {
+    throw new Error('分类类型与规则类型不一致')
+  }
 
   db.prepare(
     `UPDATE recurring_rules SET
@@ -96,10 +114,10 @@ export function updateRule(id, data) {
      WHERE id=?`
   ).run(
     data.name ?? rule.name,
-    data.type ?? rule.type,
+    nextType,
     data.amount ?? rule.amount,
     data.currency ?? rule.currency,
-    data.category_id ?? rule.category_id,
+    nextCategoryId,
     data.note ?? rule.note,
     data.frequency ?? rule.frequency,
     data.day_of_week ?? rule.day_of_week,
@@ -119,6 +137,7 @@ export function updateRule(id, data) {
 
 export function deleteRule(id) {
   const db = getDb()
+  assertNoCategoryDeletionWriteLock(db)
   const rule = getRule(id)
   if (!rule) throw new Error('规则不存在')
 

@@ -10,6 +10,7 @@ import {
   normalizeCategoryColor,
   parseCategoryColor
 } from '../../../../shared/category-colors.js'
+import { assertNoCategoryDeletionWriteLock } from '../categories/operation-lock.js'
 
 const IMPORT_LIMITS = {
   categories: 1000,
@@ -45,6 +46,7 @@ export function exportData() {
 
 export function importData(importPayload, mode = 'merge') {
   const db = getDb()
+  assertNoCategoryDeletionWriteLock(db)
   if (!['merge', 'overwrite'].includes(mode)) {
     throw new Error('导入模式无效')
   }
@@ -692,6 +694,7 @@ function claimId(preferredId, usedIds) {
 
 export function batchImportTransactions(payload) {
   const db = getDb()
+  assertNoCategoryDeletionWriteLock(db)
 
   assertPlainObject(payload, '导入数据')
   const rawTransactions = payload.transactions

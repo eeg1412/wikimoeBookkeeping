@@ -8,6 +8,7 @@ import {
   normalizeCategoryColor,
   parseCategoryColor
 } from '../../../../shared/category-colors.js'
+import { withCategoryDeletionWriteLock } from './operation-lock.js'
 
 export function listCategories() {
   const db = getDb()
@@ -132,19 +133,33 @@ export function deleteCategory(id) {
     throw new Error('分类不存在')
   }
 
-  const plan = buildDeleteCategoryPlan(db, category)
+  withCategoryDeletionWriteLock(
+    db,
+    { sourceCategoryId: id, reason: 'delete-category' },
+    () => {
+      runInTransaction(db, () => {
+        const lockedCategory = getCategoryRow(db, id)
 
-  if (plan.child_category_count > 0) {
-    throw new Error('请先处理子分类后再删除')
-  }
+        if (!lockedCategory) {
+          throw new Error('分类不存在')
+        }
 
-  if (plan.requires_migration) {
-    throw new Error('该分类下仍有关联账目或周期规则，请先迁移后再删除')
-  }
+        const plan = buildDeleteCategoryPlan(db, lockedCategory)
 
-  db.prepare(
-    "UPDATE categories SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?"
-  ).run(id)
+        if (plan.child_category_count > 0) {
+          throw new Error('请先处理子分类后再删除')
+        }
+
+        if (plan.requires_migration) {
+          throw new Error('该分类下仍有关联账目或周期规则，请先迁移后再删除')
+        }
+
+        db.prepare(
+          "UPDATE categories SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?"
+        ).run(id)
+      })
+    }
+  )
 }
 
 export function migrateCategoryAndDelete(id, targetCategoryId) {
@@ -173,36 +188,60 @@ export function migrateCategoryAndDelete(id, targetCategoryId) {
     throw new Error('只能迁移到同类型分类')
   }
 
-  const plan = buildDeleteCategoryPlan(db, sourceCategory)
+  return withCategoryDeletionWriteLock(
+    db,
+    {
+      sourceCategoryId: id,
+      targetCategoryId,
+      reason: 'migrate-and-delete-category'
+    },
+    () =>
+      runInTransaction(db, () => {
+        const lockedSourceCategory = getCategoryRow(db, id)
+        const lockedTargetCategory = getCategoryRow(db, targetCategoryId)
 
-  if (plan.child_category_count > 0) {
-    throw new Error('请先处理子分类后再删除')
-  }
+        if (!lockedSourceCategory) {
+          throw new Error('分类不存在')
+        }
 
-  return runInTransaction(db, () => {
-    const migratedTransactions = db
-      .prepare(
-        "UPDATE transactions SET category_id = ?, updated_at = datetime('now') WHERE category_id = ? AND is_deleted = 0"
-      )
-      .run(targetCategoryId, id).changes
+        if (!lockedTargetCategory) {
+          throw new Error('目标分类不存在')
+        }
 
-    const migratedRecurringRules = db
-      .prepare(
-        "UPDATE recurring_rules SET category_id = ?, updated_at = datetime('now') WHERE category_id = ? AND is_deleted = 0"
-      )
-      .run(targetCategoryId, id).changes
+        if (lockedSourceCategory.type !== lockedTargetCategory.type) {
+          throw new Error('只能迁移到同类型分类')
+        }
 
-    db.prepare(
-      "UPDATE categories SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?"
-    ).run(id)
+        const plan = buildDeleteCategoryPlan(db, lockedSourceCategory)
 
-    return {
-      deleted_category_id: id,
-      target_category_id: targetCategoryId,
-      migrated_transaction_count: migratedTransactions,
-      migrated_recurring_rule_count: migratedRecurringRules
-    }
-  })
+        if (plan.child_category_count > 0) {
+          throw new Error('请先处理子分类后再删除')
+        }
+
+        const migratedTransactions = db
+          .prepare(
+            "UPDATE transactions SET category_id = ?, updated_at = datetime('now') WHERE category_id = ? AND is_deleted = 0"
+          )
+          .run(targetCategoryId, id).changes
+
+        const migratedRecurringRules = db
+          .prepare(
+            "UPDATE recurring_rules SET category_id = ?, updated_at = datetime('now') WHERE category_id = ? AND is_deleted = 0"
+          )
+          .run(targetCategoryId, id).changes
+
+        db.prepare(
+          "UPDATE categories SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?"
+        ).run(id)
+
+        return {
+          deleted_category_id: id,
+          target_category_id: targetCategoryId,
+          migrated_transaction_count: migratedTransactions,
+          migrated_recurring_rule_count: migratedRecurringRules
+        }
+      })
+  )
 }
 
 function resolveCategoryColor(color, fallback = null) {

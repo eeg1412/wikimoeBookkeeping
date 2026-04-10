@@ -464,7 +464,7 @@ const migrationFinalMessage = computed(() => {
     return ''
   }
 
-  return `确定将 ${deleteImpactSummary.value} 迁移到「${selectedMigrationTarget.value.display_name}」并删除分类「${deletingCat.value.name}」吗？执行期间会临时锁定新增账目操作。`
+  return `确定将 ${deleteImpactSummary.value} 迁移到「${selectedMigrationTarget.value.display_name}」并删除分类「${deletingCat.value.name}」吗？执行期间会临时锁定账目和周期规则写入。`
 })
 
 function getIconOptionStyle(selected) {

@@ -10,6 +10,10 @@ import {
   generateCategoryColor,
   normalizeCategoryColor
 } from '../../../shared/category-colors.js'
+import {
+  clearExpiredCategoryOperationLocks,
+  initCategoryOperationLockSchema
+} from '../modules/categories/operation-lock.js'
 
 let db = null
 
@@ -26,6 +30,8 @@ export function getDb() {
     initSchema(db)
     migrateCategoryColors(db)
     migrateCategoryIcons(db)
+    initCategoryOperationLockSchema(db)
+    clearExpiredCategoryOperationLocks(db)
   }
   return db
 }

@@ -211,7 +211,7 @@ const form = ref({
   day_of_week: null,
   day_of_month: 1,
   month_of_year: null,
-  hour: 8,
+  hour: 0,
   minute: 0,
   timezone: settingsStore.settings.timezone || 'Asia/Shanghai',
   start_date: getLocalToday(),
