@@ -52,9 +52,7 @@ export function getCategoryFlat() {
 
 export function getCategory(id) {
   const db = getDb()
-  return db
-    .prepare('SELECT * FROM categories WHERE id = ? AND is_deleted = 0')
-    .get(id)
+  return getCategoryRow(db, id)
 }
 
 export function createCategory({
@@ -115,28 +113,96 @@ export function updateCategory(id, { name, icon, color, sort_order }) {
   return getCategory(id)
 }
 
+export function getDeleteCategoryPlan(id) {
+  const db = getDb()
+  const category = getCategoryRow(db, id)
+
+  if (!category) {
+    throw new Error('分类不存在')
+  }
+
+  return buildDeleteCategoryPlan(db, category)
+}
+
 export function deleteCategory(id) {
   const db = getDb()
-  const cat = getCategory(id)
-  if (!cat) throw new Error('分类不存在')
+  const category = getCategoryRow(db, id)
 
-  const children = db
-    .prepare(
-      'SELECT COUNT(*) as count FROM categories WHERE parent_id = ? AND is_deleted = 0'
-    )
-    .get(id)
-  if (children.count > 0) throw new Error('请先删除子分类')
+  if (!category) {
+    throw new Error('分类不存在')
+  }
 
-  const txns = db
-    .prepare(
-      'SELECT COUNT(*) as count FROM transactions WHERE category_id = ? AND is_deleted = 0'
-    )
-    .get(id)
-  if (txns.count > 0) throw new Error('该分类下有账目记录，无法删除')
+  const plan = buildDeleteCategoryPlan(db, category)
+
+  if (plan.child_category_count > 0) {
+    throw new Error('请先处理子分类后再删除')
+  }
+
+  if (plan.requires_migration) {
+    throw new Error('该分类下仍有关联账目或周期规则，请先迁移后再删除')
+  }
 
   db.prepare(
     "UPDATE categories SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?"
   ).run(id)
+}
+
+export function migrateCategoryAndDelete(id, targetCategoryId) {
+  const db = getDb()
+  const sourceCategory = getCategoryRow(db, id)
+
+  if (!sourceCategory) {
+    throw new Error('分类不存在')
+  }
+
+  if (!targetCategoryId) {
+    throw new Error('目标分类不能为空')
+  }
+
+  if (id === targetCategoryId) {
+    throw new Error('不能迁移到当前分类')
+  }
+
+  const targetCategory = getCategoryRow(db, targetCategoryId)
+
+  if (!targetCategory) {
+    throw new Error('目标分类不存在')
+  }
+
+  if (sourceCategory.type !== targetCategory.type) {
+    throw new Error('只能迁移到同类型分类')
+  }
+
+  const plan = buildDeleteCategoryPlan(db, sourceCategory)
+
+  if (plan.child_category_count > 0) {
+    throw new Error('请先处理子分类后再删除')
+  }
+
+  return runInTransaction(db, () => {
+    const migratedTransactions = db
+      .prepare(
+        "UPDATE transactions SET category_id = ?, updated_at = datetime('now') WHERE category_id = ? AND is_deleted = 0"
+      )
+      .run(targetCategoryId, id).changes
+
+    const migratedRecurringRules = db
+      .prepare(
+        "UPDATE recurring_rules SET category_id = ?, updated_at = datetime('now') WHERE category_id = ? AND is_deleted = 0"
+      )
+      .run(targetCategoryId, id).changes
+
+    db.prepare(
+      "UPDATE categories SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?"
+    ).run(id)
+
+    return {
+      deleted_category_id: id,
+      target_category_id: targetCategoryId,
+      migrated_transaction_count: migratedTransactions,
+      migrated_recurring_rule_count: migratedRecurringRules
+    }
+  })
 }
 
 function resolveCategoryColor(color, fallback = null) {
@@ -149,4 +215,69 @@ function resolveCategoryColor(color, fallback = null) {
   }
 
   return normalizeCategoryColor(color, fallback)
+}
+
+function getCategoryRow(db, id) {
+  return db
+    .prepare('SELECT * FROM categories WHERE id = ? AND is_deleted = 0')
+    .get(id)
+}
+
+function getDeleteCategoryUsage(db, categoryId) {
+  const childCategoryCount = db
+    .prepare(
+      'SELECT COUNT(*) as count FROM categories WHERE parent_id = ? AND is_deleted = 0'
+    )
+    .get(categoryId).count
+
+  const transactionCount = db
+    .prepare(
+      'SELECT COUNT(*) as count FROM transactions WHERE category_id = ? AND is_deleted = 0'
+    )
+    .get(categoryId).count
+
+  const recurringRuleCount = db
+    .prepare(
+      'SELECT COUNT(*) as count FROM recurring_rules WHERE category_id = ? AND is_deleted = 0'
+    )
+    .get(categoryId).count
+
+  return {
+    childCategoryCount,
+    transactionCount,
+    recurringRuleCount
+  }
+}
+
+function buildDeleteCategoryPlan(db, category) {
+  const { childCategoryCount, transactionCount, recurringRuleCount } =
+    getDeleteCategoryUsage(db, category.id)
+  const requiresMigration =
+    childCategoryCount === 0 &&
+    (transactionCount > 0 || recurringRuleCount > 0)
+
+  return {
+    category,
+    child_category_count: childCategoryCount,
+    transaction_count: transactionCount,
+    recurring_rule_count: recurringRuleCount,
+    can_delete_directly:
+      childCategoryCount === 0 &&
+      transactionCount === 0 &&
+      recurringRuleCount === 0,
+    requires_migration: requiresMigration
+  }
+}
+
+function runInTransaction(db, callback) {
+  db.exec('BEGIN')
+
+  try {
+    const result = callback()
+    db.exec('COMMIT')
+    return result
+  } catch (error) {
+    db.exec('ROLLBACK')
+    throw error
+  }
 }

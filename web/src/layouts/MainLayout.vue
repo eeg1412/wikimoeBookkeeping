@@ -111,6 +111,26 @@
       </div>
     </Transition>
 
+    <Transition name="fade">
+      <div
+        v-if="categoriesStore.migrationBusy"
+        class="fixed inset-0 z-[60] bg-black/35 p-4 backdrop-blur-sm"
+      >
+        <div class="flex min-h-full items-center justify-center">
+          <section
+            class="w-full max-w-sm rounded-2xl border border-border bg-surface px-5 py-4 shadow-xl"
+          >
+            <h3 class="text-base font-semibold text-on-surface">
+              正在迁移并删除分类
+            </h3>
+            <p class="mt-2 text-sm text-on-surface-secondary">
+              当前正在迁移账目和周期规则，并删除原分类。处理中暂时禁止新增账目，请稍候。
+            </p>
+          </section>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Main content -->
     <main class="lg:pl-60 pb-20 lg:pb-4">
       <div class="max-w-5xl mx-auto p-4">

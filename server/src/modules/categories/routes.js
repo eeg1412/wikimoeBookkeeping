@@ -38,10 +38,37 @@ export function registerCategoryRoutes(router) {
     }
   })
 
+  router.get('/api/categories/:id/delete-plan', (req, res) => {
+    try {
+      const data = service.getDeleteCategoryPlan(Number(req.params.id))
+      json(res, data)
+    } catch (e) {
+      error(res, e.message)
+    }
+  })
+
   router.delete('/api/categories/:id', (req, res) => {
     try {
       service.deleteCategory(Number(req.params.id))
       json(res, { success: true })
+    } catch (e) {
+      error(res, e.message)
+    }
+  })
+
+  router.post('/api/categories/:id/migrate-and-delete', (req, res) => {
+    try {
+      const targetCategoryId = Number(req.body.target_category_id)
+
+      if (!targetCategoryId) {
+        return error(res, '目标分类不能为空')
+      }
+
+      const data = service.migrateCategoryAndDelete(
+        Number(req.params.id),
+        targetCategoryId
+      )
+      json(res, data)
     } catch (e) {
       error(res, e.message)
     }

@@ -212,13 +212,99 @@
     </AppModal>
 
     <ConfirmDialog
-      :show="!!deletingCat"
+      :show="deleteConfirmVisible"
       title="删除分类"
       :message="`确定要删除分类「${deletingCat?.name}」吗？`"
-      confirm-text="删除"
+      :confirm-text="deleteCheckLoading ? '检查中...' : '删除'"
+      :confirm-disabled="deleteCheckLoading"
+      :cancel-disabled="deleteCheckLoading"
+      :show-close="!deleteCheckLoading"
+      :close-on-overlay="!deleteCheckLoading"
       danger
       @confirm="handleDelete"
-      @cancel="deletingCat = null"
+      @cancel="resetDeleteFlow"
+    />
+
+    <ConfirmDialog
+      :show="showMigrationPrompt"
+      title="需要先迁移后删除"
+      :message="migrationPromptMessage"
+      confirm-text="继续处理"
+      @confirm="openMigrationSelector"
+      @cancel="resetDeleteFlow"
+    />
+
+    <AppModal
+      :show="showMigrationSelector"
+      title="迁移账目分类"
+      :description="migrationSelectorDescription"
+      max-width="lg"
+      :show-close="!migrationSubmitting"
+      :close-on-overlay="!migrationSubmitting"
+      @close="cancelMigrationSelector"
+    >
+      <div class="space-y-4">
+        <div
+          class="rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3 text-sm text-on-surface-secondary"
+        >
+          分类「{{ deletingCat?.name }}」当前关联 {{ deleteImpactSummary }}。
+        </div>
+
+        <div
+          v-if="!migrationTargetOptions.length"
+          class="rounded-2xl border border-dashed border-border bg-surface-secondary/20 px-4 py-4 text-sm text-on-surface-secondary"
+        >
+          当前没有可迁移到的同类型分类，请先新增一个同类型分类后再继续删除。
+        </div>
+
+        <div v-else>
+          <label class="label">转移到哪个分类</label>
+          <select v-model="migrationTargetId" class="select">
+            <option value="">请选择同类型分类</option>
+            <option
+              v-for="category in migrationTargetOptions"
+              :key="category.id"
+              :value="String(category.id)"
+            >
+              {{ category.display_name }}
+            </option>
+          </select>
+          <p class="mt-2 text-xs text-on-surface-secondary">
+            为避免删除后留下失效引用，这里会一并迁移当前分类下的周期规则。
+          </p>
+        </div>
+      </div>
+
+      <template #footer>
+        <button
+          class="btn-secondary btn-sm"
+          :disabled="migrationSubmitting"
+          @click="cancelMigrationSelector"
+        >
+          取消
+        </button>
+        <button
+          class="btn-primary btn-sm"
+          :disabled="!migrationTargetOptions.length || !migrationTargetId || migrationSubmitting"
+          @click="openMigrationFinalConfirm"
+        >
+          确认
+        </button>
+      </template>
+    </AppModal>
+
+    <ConfirmDialog
+      :show="showMigrationFinalConfirm"
+      title="二次确认迁移并删除"
+      :message="migrationFinalMessage"
+      :confirm-text="migrationSubmitting ? '迁移中...' : '确认迁移并删除'"
+      :confirm-disabled="migrationSubmitting"
+      :cancel-disabled="migrationSubmitting"
+      :show-close="!migrationSubmitting"
+      :close-on-overlay="!migrationSubmitting"
+      danger
+      @confirm="handleMigrateAndDelete"
+      @cancel="handleMigrationFinalCancel"
     />
   </div>
 </template>
@@ -259,6 +345,13 @@ const formFieldErrors = ref({ name: '' })
 const formError = ref('')
 const formSaving = ref(false)
 const deletingCat = ref(null)
+const deletePlan = ref(null)
+const deleteCheckLoading = ref(false)
+const showMigrationPrompt = ref(false)
+const showMigrationSelector = ref(false)
+const showMigrationFinalConfirm = ref(false)
+const migrationTargetId = ref('')
+const migrationSubmitting = ref(false)
 
 const allIconGroups = computed(() => normalizeIconGroups(settingsStore.icons))
 const currentIconType = computed(
@@ -296,6 +389,79 @@ const inheritedColor = computed(
 const previewAccentColor = computed(() =>
   isParentForm.value ? formColor.value : inheritedColor.value
 )
+const deleteConfirmVisible = computed(
+  () =>
+    !!deletingCat.value &&
+    !showMigrationPrompt.value &&
+    !showMigrationSelector.value &&
+    !showMigrationFinalConfirm.value
+)
+const categoryLookup = computed(
+  () => new Map(store.flatList.map(category => [category.id, category]))
+)
+const migrationTargetOptions = computed(() => {
+  if (!deletingCat.value) {
+    return []
+  }
+
+  return store.flatList
+    .filter(
+      category =>
+        category.id !== deletingCat.value.id &&
+        category.type === deletingCat.value.type
+    )
+    .map(category => ({
+      ...category,
+      display_name: formatCategoryPathName(category)
+    }))
+})
+const selectedMigrationTarget = computed(() => {
+  if (!migrationTargetId.value) {
+    return null
+  }
+
+  return (
+    migrationTargetOptions.value.find(
+      category => String(category.id) === migrationTargetId.value
+    ) || null
+  )
+})
+const deleteImpactSummary = computed(() => {
+  const segments = []
+  const transactionCount = deletePlan.value?.transaction_count || 0
+  const recurringRuleCount = deletePlan.value?.recurring_rule_count || 0
+
+  if (transactionCount > 0) {
+    segments.push(`${transactionCount} 条账目`)
+  }
+
+  if (recurringRuleCount > 0) {
+    segments.push(`${recurringRuleCount} 条周期规则`)
+  }
+
+  return segments.length ? segments.join('、') : '无关联数据'
+})
+const migrationPromptMessage = computed(() => {
+  if (!deletingCat.value || !deletePlan.value) {
+    return ''
+  }
+
+  return `分类「${deletingCat.value.name}」下存在 ${deleteImpactSummary.value}，不能直接删除。是否先迁移到其他同类型分类后再删除？`
+})
+const migrationSelectorDescription = computed(() => {
+  if (!deletingCat.value) {
+    return ''
+  }
+
+  return `请选择分类「${deletingCat.value.name}」要迁移到的目标分类。`
+})
+const migrationFinalMessage = computed(() => {
+  if (!deletingCat.value || !selectedMigrationTarget.value) {
+    return ''
+  }
+
+  return `确定将 ${deleteImpactSummary.value} 迁移到「${selectedMigrationTarget.value.display_name}」并删除分类「${deletingCat.value.name}」吗？执行期间会临时锁定新增账目操作。`
+})
 
 function getIconOptionStyle(selected) {
   if (!selected) {
@@ -404,17 +570,148 @@ async function handleSave() {
 }
 
 function confirmDelete(cat) {
+  resetDeleteFlow()
   deletingCat.value = cat
 }
 
 async function handleDelete() {
-  try {
-    await store.remove(deletingCat.value.id)
-  } catch (error) {
-    toastStore.error(error.message, { title: '分类删除失败' })
+  if (!deletingCat.value || deleteCheckLoading.value) {
+    return
   }
 
+  deleteCheckLoading.value = true
+
+  try {
+    const plan = await store.getDeletePlan(deletingCat.value.id)
+    deletePlan.value = plan
+
+    if (plan.child_category_count > 0) {
+      toastStore.error(
+        `分类「${deletingCat.value.name}」下还有 ${plan.child_category_count} 个子分类，请先处理子分类。`,
+        { title: '分类删除失败' }
+      )
+      resetDeleteFlow()
+      return
+    }
+
+    if (plan.can_delete_directly) {
+      const categoryName = deletingCat.value.name
+      await store.remove(deletingCat.value.id)
+      toastStore.success(`已删除分类「${categoryName}」`, {
+        title: '分类删除成功'
+      })
+      resetDeleteFlow()
+      return
+    }
+
+    if (plan.requires_migration) {
+      showMigrationPrompt.value = true
+      return
+    }
+
+    toastStore.error('当前分类暂时无法删除，请稍后重试', {
+      title: '分类删除失败'
+    })
+    resetDeleteFlow()
+  } catch (error) {
+    toastStore.error(error.message, { title: '分类删除失败' })
+    resetDeleteFlow()
+  } finally {
+    deleteCheckLoading.value = false
+  }
+}
+
+function openMigrationSelector() {
+  showMigrationPrompt.value = false
+  showMigrationSelector.value = true
+}
+
+function cancelMigrationSelector() {
+  resetDeleteFlow()
+}
+
+function openMigrationFinalConfirm() {
+  if (!selectedMigrationTarget.value) {
+    toastStore.error('请选择要转移到的分类', { title: '未选择目标分类' })
+    return
+  }
+
+  showMigrationSelector.value = false
+  showMigrationFinalConfirm.value = true
+}
+
+function handleMigrationFinalCancel() {
+  showMigrationFinalConfirm.value = false
+  showMigrationSelector.value = true
+}
+
+async function handleMigrateAndDelete() {
+  if (
+    !deletingCat.value ||
+    !selectedMigrationTarget.value ||
+    migrationSubmitting.value
+  ) {
+    return
+  }
+
+  const sourceCategoryName = deletingCat.value.name
+  const targetCategory = selectedMigrationTarget.value
+
+  migrationSubmitting.value = true
+
+  try {
+    const result = await store.migrateAndDelete(
+      deletingCat.value.id,
+      targetCategory.id
+    )
+
+    toastStore.success(
+      buildMigrationSuccessMessage(result, targetCategory, sourceCategoryName),
+      { title: '迁移并删除成功' }
+    )
+    resetDeleteFlow()
+  } catch (error) {
+    toastStore.error(error.message, { title: '迁移并删除失败' })
+    showMigrationFinalConfirm.value = false
+    showMigrationSelector.value = true
+  } finally {
+    migrationSubmitting.value = false
+  }
+}
+
+function resetDeleteFlow() {
   deletingCat.value = null
+  deletePlan.value = null
+  deleteCheckLoading.value = false
+  showMigrationPrompt.value = false
+  showMigrationSelector.value = false
+  showMigrationFinalConfirm.value = false
+  migrationTargetId.value = ''
+  migrationSubmitting.value = false
+}
+
+function formatCategoryPathName(category) {
+  const parentCategory = category.parent_id
+    ? categoryLookup.value.get(category.parent_id)
+    : null
+
+  return parentCategory ? `${parentCategory.name} / ${category.name}` : category.name
+}
+
+function buildMigrationSuccessMessage(result, targetCategory, sourceCategoryName) {
+  const segments = []
+
+  if (result.migrated_transaction_count > 0) {
+    segments.push(`${result.migrated_transaction_count} 条账目`)
+  }
+
+  if (result.migrated_recurring_rule_count > 0) {
+    segments.push(`${result.migrated_recurring_rule_count} 条周期规则`)
+  }
+
+  const summary = segments.length ? segments.join('、') : '关联数据'
+
+  return `已将分类「${sourceCategoryName}」下的 ${summary} 迁移到「${targetCategory.display_name}」并删除原分类。`
 }
 
 watch(

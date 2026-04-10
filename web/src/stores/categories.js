@@ -5,6 +5,7 @@ import { api } from '../api/client.js'
 export const useCategoriesStore = defineStore('categories', () => {
   const tree = ref([])
   const loading = ref(false)
+  const migrationBusy = ref(false)
 
   const flatList = computed(() => {
     const list = []
@@ -51,15 +52,36 @@ export const useCategoriesStore = defineStore('categories', () => {
     await fetch()
   }
 
+  async function getDeletePlan(id) {
+    return api.get(`/categories/${id}/delete-plan`)
+  }
+
+  async function migrateAndDelete(id, targetCategoryId) {
+    migrationBusy.value = true
+
+    try {
+      const result = await api.post(`/categories/${id}/migrate-and-delete`, {
+        target_category_id: targetCategoryId
+      })
+      await fetch()
+      return result
+    } finally {
+      migrationBusy.value = false
+    }
+  }
+
   return {
     tree,
     flatList,
     incomeTree,
     expenseTree,
     loading,
+    migrationBusy,
     fetch,
     create,
     update,
-    remove
+    remove,
+    getDeletePlan,
+    migrateAndDelete
   }
 })
