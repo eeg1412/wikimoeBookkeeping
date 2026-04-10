@@ -37,6 +37,7 @@ import DatabaseIcon from '@fluentui/svg-icons/icons/database_24_regular.svg?raw'
 import DeleteIcon from '@fluentui/svg-icons/icons/delete_24_regular.svg?raw'
 import DesktopIcon from '@fluentui/svg-icons/icons/desktop_24_regular.svg?raw'
 import DismissIcon from '@fluentui/svg-icons/icons/dismiss_24_regular.svg?raw'
+import EditIcon from '@fluentui/svg-icons/icons/edit_24_regular.svg?raw'
 import DocumentTextIcon from '@fluentui/svg-icons/icons/document_text_24_regular.svg?raw'
 import DoorIcon from '@fluentui/svg-icons/icons/door_20_regular.svg?raw'
 import DrinkBeerIcon from '@fluentui/svg-icons/icons/drink_beer_24_regular.svg?raw'
@@ -155,6 +156,7 @@ const ICON_URLS = {
   balance: MoneyIcon,
   notes: DocumentTextIcon,
   add: AddIcon,
+  edit: EditIcon,
   close: DismissIcon,
   menu: LineHorizontal3Icon,
   more: MoreHorizontalIcon,

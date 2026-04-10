@@ -1,15 +1,31 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h1 class="page-title">账目</h1>
-      <router-link to="/transactions/new" class="btn-primary btn-sm"
-        >+ 记一笔</router-link
-      >
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            v-if="isCategoryScopedPage"
+            class="btn-ghost btn-sm"
+            @click="goBackToCategories"
+          >
+            ← 返回
+          </button>
+          <h1 class="page-title truncate">{{ pageTitle }}</h1>
+        </div>
+        <p
+          v-if="pageDescription"
+          class="mt-1 text-sm text-on-surface-secondary"
+        >
+          {{ pageDescription }}
+        </p>
+      </div>
+      <router-link :to="createTransactionRoute" class="btn-primary btn-sm">
+        + 记一笔
+      </router-link>
     </div>
 
-    <!-- Filters -->
     <div class="card">
-      <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+      <div class="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center">
         <select
           v-model="filterCurrency"
           class="select min-w-0 w-full text-sm sm:w-32"
@@ -26,13 +42,49 @@
           </option>
         </select>
         <select
-          v-model="filterType"
+          v-if="!isCategoryScopedPage"
+          v-model="selectedTypeValue"
           class="select min-w-0 w-full text-sm sm:w-24"
-          @change="applyFilter"
+          :disabled="typeFilterDisabled"
+          @change="handleTypeChange"
         >
           <option value="">全部</option>
           <option value="income">收入</option>
           <option value="expense">支出</option>
+        </select>
+        <select
+          v-if="!isCategoryScopedPage"
+          v-model="selectedParentCategoryId"
+          class="select min-w-0 w-full text-sm sm:w-40"
+          :disabled="
+            parentCategoryFilterDisabled || !parentCategoryOptions.length
+          "
+          @change="handleParentCategoryChange"
+        >
+          <option value="">{{ parentCategoryPlaceholder }}</option>
+          <option
+            v-for="category in parentCategoryOptions"
+            :key="category.id"
+            :value="String(category.id)"
+          >
+            {{ formatParentCategoryOption(category) }}
+          </option>
+        </select>
+        <select
+          v-if="!isCategoryScopedPage"
+          v-model="selectedChildCategoryId"
+          class="select min-w-0 w-full text-sm sm:w-40"
+          :disabled="childCategoryFilterDisabled"
+          @change="applyFilter"
+        >
+          <option value="">{{ childCategoryPlaceholder }}</option>
+          <option
+            v-for="category in childCategoryOptions"
+            :key="category.id"
+            :value="String(category.id)"
+          >
+            {{ category.name }}
+          </option>
         </select>
         <DatePicker
           v-model="filterDateFrom"
@@ -43,9 +95,10 @@
           @change="handleFilterDateChange('from', $event)"
         />
         <span
-          class="hidden self-center text-on-surface-secondary sm:inline-flex"
-          >至</span
+          class="hidden self-center text-on-surface-secondary lg:inline-flex"
         >
+          至
+        </span>
         <DatePicker
           v-model="filterDateTo"
           :week-start="Number(settingsStore.settings.week_start) || 1"
@@ -57,7 +110,7 @@
         />
         <button
           v-if="hasFilter"
-          class="btn-ghost btn-sm col-span-2 sm:col-span-1"
+          class="btn-ghost btn-sm col-span-2 lg:col-span-1"
           @click="clearFilter"
         >
           清除
@@ -65,23 +118,22 @@
       </div>
     </div>
 
-    <!-- Transaction list -->
     <div
       v-if="store.loading"
-      class="text-center py-12 text-on-surface-secondary"
+      class="py-12 text-center text-on-surface-secondary"
     >
       加载中...
     </div>
     <div
       v-else-if="!store.list.length"
-      class="text-center py-12 text-on-surface-secondary"
+      class="py-12 text-center text-on-surface-secondary"
     >
       暂无记录
     </div>
     <div v-else class="space-y-2">
       <div v-for="(group, date) in groupedList" :key="date">
         <div
-          class="text-xs font-medium text-on-surface-secondary px-1 py-2 sticky top-14 lg:top-0 z-10 bg-surface-secondary"
+          class="sticky top-14 z-10 bg-surface-secondary px-1 py-2 text-xs font-medium text-on-surface-secondary lg:top-0"
         >
           {{ date }}
           <span class="ml-2">
@@ -95,17 +147,17 @@
           <div
             v-for="txn in group.items"
             :key="txn.id"
-            class="flex items-center gap-3 px-4 py-3 hover:bg-surface-secondary/50 transition-colors cursor-pointer"
-            @click="$router.push(`/transactions/${txn.id}/edit`)"
+            class="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-secondary/50"
+            @click="openTransaction(txn.id)"
           >
             <AppIcon
               :name="txn.category_icon || DEFAULT_CATEGORY_ICON"
               :size="24"
               :style="getTransactionCategoryStyle(txn)"
             />
-            <div class="flex-1 min-w-0">
+            <div class="min-w-0 flex-1">
               <div
-                class="text-sm font-medium truncate"
+                class="truncate text-sm font-medium"
                 :style="getTransactionCategoryStyle(txn)"
               >
                 {{
@@ -114,11 +166,11 @@
                     : ''
                 }}{{ txn.category_name }}
               </div>
-              <div class="text-xs text-on-surface-secondary truncate">
+              <div class="truncate text-xs text-on-surface-secondary">
                 {{ txn.note || '无备注' }}
                 <span
                   v-if="txn.source !== 'manual'"
-                  class="badge text-[10px] ml-1"
+                  class="badge ml-1 text-[10px]"
                   :class="
                     txn.source === 'recurring'
                       ? 'badge-income'
@@ -129,7 +181,7 @@
                 </span>
               </div>
             </div>
-            <div class="text-right shrink-0">
+            <div class="shrink-0 text-right">
               <div
                 class="text-sm font-bold"
                 :class="
@@ -141,7 +193,7 @@
               </div>
             </div>
             <button
-              class="shrink-0 ml-1 p-1.5 rounded-lg text-on-surface-secondary hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+              class="ml-1 shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-rose-50 dark:hover:bg-rose-900/20"
               title="删除"
               @click="askDelete(txn, $event)"
             >
@@ -152,7 +204,6 @@
       </div>
     </div>
 
-    <!-- Pagination -->
     <div
       v-if="store.total > store.pageSize"
       class="flex justify-center gap-2 pt-2"
@@ -164,7 +215,7 @@
       >
         上一页
       </button>
-      <span class="text-sm text-on-surface-secondary self-center">
+      <span class="self-center text-sm text-on-surface-secondary">
         {{ store.page }} / {{ Math.ceil(store.total / store.pageSize) }}
       </span>
       <button
@@ -189,26 +240,221 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, toRefs } from 'vue'
+import { computed, ref, toRefs, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { DEFAULT_CATEGORY_ICON } from '@shared/icon-names.js'
 import { useTransactionsStore } from '../stores/transactions.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useCategoriesStore } from '../stores/categories.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { getCategoryAccentColor } from '../utils/category-ui.js'
 import DatePicker from '../components/DatePicker.vue'
 import { useCachedViewState } from '../composables/useCachedViewState.js'
 
-const TRANSACTIONS_LIST_STATE_KEY = 'transactions:list'
+const BASE_TRANSACTIONS_LIST_STATE_KEY = 'transactions:list'
 
+const route = useRoute()
+const router = useRouter()
 const store = useTransactionsStore()
 const settingsStore = useSettingsStore()
+const categoriesStore = useCategoriesStore()
 
 const showDeleteConfirm = ref(false)
 const pendingDeleteId = ref(null)
 
-function askDelete(txn, e) {
-  e.stopPropagation()
+const scopedCategoryId = computed(() => {
+  const nextCategoryId = Number(route.params.categoryId)
+
+  return Number.isInteger(nextCategoryId) && nextCategoryId > 0
+    ? nextCategoryId
+    : null
+})
+const isCategoryScopedPage = computed(() => scopedCategoryId.value !== null)
+const scopedCategory = computed(
+  () =>
+    categoriesStore.flatList.find(
+      category => category.id === scopedCategoryId.value
+    ) || null
+)
+const pageTitle = computed(() => {
+  if (!isCategoryScopedPage.value) {
+    return '账目'
+  }
+
+  const categoryLabel = formatCategoryPathName(scopedCategory.value)
+  return categoryLabel ? `${categoryLabel}账目` : '分类账目'
+})
+const pageDescription = computed(() => {
+  const categoryLabel = formatCategoryPathName(scopedCategory.value)
+
+  if (categoryLabel) {
+    return `仅显示分类「${categoryLabel}」下的账目。`
+  }
+
+  return isCategoryScopedPage.value ? '仅显示当前分类下的账目。' : ''
+})
+const transactionsListStateKey = computed(() =>
+  isCategoryScopedPage.value
+    ? `${BASE_TRANSACTIONS_LIST_STATE_KEY}:category:${scopedCategoryId.value}`
+    : BASE_TRANSACTIONS_LIST_STATE_KEY
+)
+
+const { state: listState, resetState: resetListState } = useCachedViewState(
+  transactionsListStateKey,
+  {
+    filterType: '',
+    filterDateFrom: '',
+    filterDateTo: '',
+    filterCurrency: '',
+    filterParentCategoryId: '',
+    filterCategoryId: '',
+    page: 1
+  }
+)
+const {
+  filterType,
+  filterDateFrom,
+  filterDateTo,
+  filterCurrency,
+  filterParentCategoryId,
+  filterCategoryId,
+  page
+} = toRefs(listState)
+
+const selectedTypeValue = computed({
+  get() {
+    return scopedCategory.value?.type || filterType.value
+  },
+  set(value) {
+    if (isCategoryScopedPage.value) {
+      return
+    }
+
+    filterType.value = value
+  }
+})
+const parentCategoryOptions = computed(() => {
+  const activeType = filterType.value || scopedCategory.value?.type || ''
+
+  return categoriesStore.tree.filter(
+    category => !activeType || category.type === activeType
+  )
+})
+const selectedParentCategoryId = computed({
+  get() {
+    if (!scopedCategory.value) {
+      return isCategoryScopedPage.value ? '' : filterParentCategoryId.value
+    }
+
+    return String(scopedCategory.value.parent_id || scopedCategory.value.id)
+  },
+  set(value) {
+    if (isCategoryScopedPage.value) {
+      return
+    }
+
+    if (filterParentCategoryId.value !== value) {
+      filterCategoryId.value = ''
+    }
+
+    filterParentCategoryId.value = value
+  }
+})
+const childCategoryOptions = computed(() => {
+  const selectedParent =
+    parentCategoryOptions.value.find(
+      category => String(category.id) === selectedParentCategoryId.value
+    ) ||
+    categoriesStore.tree.find(
+      category => String(category.id) === selectedParentCategoryId.value
+    )
+
+  return selectedParent?.children || []
+})
+const selectedChildCategoryId = computed({
+  get() {
+    if (scopedCategory.value?.parent_id) {
+      return String(scopedCategory.value.id)
+    }
+
+    return filterCategoryId.value
+  },
+  set(value) {
+    if (scopedCategory.value?.parent_id) {
+      return
+    }
+
+    filterCategoryId.value = value
+  }
+})
+const typeFilterDisabled = computed(() => isCategoryScopedPage.value)
+const parentCategoryFilterDisabled = computed(() => isCategoryScopedPage.value)
+const childCategoryFilterDisabled = computed(
+  () => !!scopedCategory.value?.parent_id || !childCategoryOptions.value.length
+)
+const parentCategoryPlaceholder = computed(() =>
+  isCategoryScopedPage.value ? '当前分类' : '全部分类'
+)
+const childCategoryPlaceholder = computed(() => {
+  if (scopedCategory.value?.parent_id) {
+    return '当前子分类'
+  }
+
+  if (!selectedParentCategoryId.value) {
+    return '先选分类'
+  }
+
+  return childCategoryOptions.value.length ? '全部子分类' : '无子分类'
+})
+const filterCurrencies = computed(() => settingsStore.getFilterCurrencies())
+const activeCurrencyCode = computed(
+  () => filterCurrency.value || settingsStore.settings.default_currency
+)
+const hasFilter = computed(
+  () =>
+    filterType.value ||
+    filterDateFrom.value ||
+    filterDateTo.value ||
+    filterParentCategoryId.value ||
+    filterCategoryId.value
+)
+const groupedList = computed(() => {
+  const groups = {}
+
+  for (const txn of store.list) {
+    if (!groups[txn.date]) {
+      groups[txn.date] = { items: [], income: 0, expense: 0 }
+    }
+
+    groups[txn.date].items.push(txn)
+
+    if (txn.type === 'income') {
+      groups[txn.date].income += txn.amount
+    } else {
+      groups[txn.date].expense += txn.amount
+    }
+  }
+
+  return groups
+})
+const createTransactionRoute = computed(() => {
+  const query = {}
+
+  if (isCategoryScopedPage.value) {
+    query.category_id =
+      selectedChildCategoryId.value || String(scopedCategoryId.value)
+    query.return_to = route.fullPath
+  }
+
+  return {
+    name: 'TransactionNew',
+    query
+  }
+})
+
+function askDelete(txn, event) {
+  event.stopPropagation()
   pendingDeleteId.value = txn.id
   showDeleteConfirm.value = true
 }
@@ -217,6 +463,7 @@ async function confirmDelete() {
   if (pendingDeleteId.value) {
     await store.remove(pendingDeleteId.value)
   }
+
   showDeleteConfirm.value = false
   pendingDeleteId.value = null
 }
@@ -231,44 +478,53 @@ function getTransactionCategoryStyle(transaction) {
   return color ? { color } : undefined
 }
 
-const { state: listState, resetState: resetListState } = useCachedViewState(
-  TRANSACTIONS_LIST_STATE_KEY,
-  {
-    filterType: '',
-    filterDateFrom: '',
-    filterDateTo: '',
-    filterCurrency: '',
-    page: 1
+function formatCategoryPathName(category) {
+  if (!category) {
+    return ''
   }
-)
-const { filterType, filterDateFrom, filterDateTo, filterCurrency, page } =
-  toRefs(listState)
-const filterCurrencies = computed(() => settingsStore.getFilterCurrencies())
-const activeCurrencyCode = computed(
-  () => filterCurrency.value || settingsStore.settings.default_currency
-)
 
-const hasFilter = computed(
-  () => filterType.value || filterDateFrom.value || filterDateTo.value
-)
+  const parentCategory = category.parent_id
+    ? categoriesStore.flatList.find(item => item.id === category.parent_id)
+    : null
 
-const groupedList = computed(() => {
-  const groups = {}
-  for (const txn of store.list) {
-    if (!groups[txn.date]) {
-      groups[txn.date] = { items: [], income: 0, expense: 0 }
-    }
-    groups[txn.date].items.push(txn)
-    if (txn.type === 'income') groups[txn.date].income += txn.amount
-    else groups[txn.date].expense += txn.amount
+  return parentCategory
+    ? `${parentCategory.name} / ${category.name}`
+    : category.name
+}
+
+function formatParentCategoryOption(category) {
+  if (filterType.value || scopedCategory.value?.type) {
+    return category.name
   }
-  return groups
-})
+
+  return `${category.type === 'income' ? '收入' : '支出'} / ${category.name}`
+}
+
+function resolveCategoryFilterId() {
+  if (scopedCategory.value?.parent_id) {
+    return scopedCategory.value.id
+  }
+
+  if (filterCategoryId.value) {
+    return Number(filterCategoryId.value)
+  }
+
+  if (scopedCategoryId.value) {
+    return scopedCategoryId.value
+  }
+
+  if (filterParentCategoryId.value) {
+    return Number(filterParentCategoryId.value)
+  }
+
+  return undefined
+}
 
 function getCurrentFilters() {
   return {
     currency: filterCurrency.value || undefined,
     type: filterType.value || undefined,
+    category_id: resolveCategoryFilterId(),
     date_from: filterDateFrom.value || undefined,
     date_to: filterDateTo.value || undefined
   }
@@ -289,6 +545,24 @@ function normalizeFilterDateRange(changedField) {
   }
 
   filterDateTo.value = filterDateFrom.value
+}
+
+function handleTypeChange() {
+  if (
+    filterParentCategoryId.value &&
+    !parentCategoryOptions.value.some(
+      category => String(category.id) === filterParentCategoryId.value
+    )
+  ) {
+    filterParentCategoryId.value = ''
+    filterCategoryId.value = ''
+  }
+
+  applyFilter()
+}
+
+function handleParentCategoryChange() {
+  applyFilter()
 }
 
 function handleFilterDateChange(field, value) {
@@ -331,6 +605,39 @@ function changePage(nextPage) {
   store.fetch()
 }
 
+function openTransaction(id) {
+  const query = isCategoryScopedPage.value
+    ? { return_to: route.fullPath }
+    : undefined
+
+  router.push({
+    name: 'TransactionEdit',
+    params: { id },
+    query
+  })
+}
+
+function goBackToCategories() {
+  router.push({
+    name: 'Categories',
+    query: scopedCategory.value?.type
+      ? { type: scopedCategory.value.type }
+      : undefined
+  })
+}
+
+watch(
+  () => childCategoryOptions.value,
+  options => {
+    if (
+      filterCategoryId.value &&
+      !options.some(category => String(category.id) === filterCategoryId.value)
+    ) {
+      filterCategoryId.value = ''
+    }
+  }
+)
+
 watch(
   () => store.page,
   nextPage => {
@@ -338,6 +645,15 @@ watch(
       page.value = nextPage
     }
   }
+)
+
+watch(
+  transactionsListStateKey,
+  () => {
+    syncListState()
+    store.fetch()
+  },
+  { flush: 'post' }
 )
 
 watch(

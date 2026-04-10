@@ -26,14 +26,20 @@
     @apply btn bg-primary text-white hover:bg-primary-dark shadow-sm;
   }
   .btn-secondary {
-    @apply btn bg-surface-secondary text-on-surface border border-border
-           hover:bg-border/30;
+    @apply btn text-on-surface border border-border;
+    background-color: rgb(var(--color-surface-muted));
+  }
+  .btn-secondary:hover {
+    background-color: rgb(var(--color-surface-muted) / 0.8);
   }
   .btn-danger {
     @apply btn bg-red-500 text-white hover:bg-red-600;
   }
   .btn-ghost {
-    @apply btn text-on-surface-secondary hover:bg-surface-secondary;
+    @apply btn text-on-surface-secondary;
+  }
+  .btn-ghost:hover {
+    background-color: rgb(var(--color-surface-muted) / 0.7);
   }
   .btn-sm {
     @apply px-3 py-1.5 text-xs;
@@ -82,6 +88,21 @@
   }
   .scrollbar-thin {
     scrollbar-width: thin;
+  }
+  .surface-muted {
+    background-color: rgb(var(--color-surface-muted));
+  }
+  .surface-muted-soft {
+    background-color: rgb(var(--color-surface-muted) / 0.6);
+  }
+  .surface-muted-strong {
+    background-color: rgb(var(--color-surface-muted) / 0.95);
+  }
+  .surface-muted-faint {
+    background-color: rgb(var(--color-surface-muted) / 0.3);
+  }
+  .hover-surface-muted:hover {
+    background-color: rgb(var(--color-surface-muted));
   }
 }
 .custom-scroll::-webkit-scrollbar {

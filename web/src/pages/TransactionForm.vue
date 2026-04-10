@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6">
     <div class="flex flex-wrap items-center gap-3">
-      <button class="btn-ghost btn-sm" @click="$router.back()">← 返回</button>
+      <button class="btn-ghost btn-sm" @click="handleBack">← 返回</button>
       <h1 class="page-title">{{ isEdit ? '编辑账目' : '记一笔' }}</h1>
     </div>
 
@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTransactionsStore } from '../stores/transactions.js'
 import { useCategoriesStore } from '../stores/categories.js'
@@ -107,6 +107,7 @@ const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
 const showDelete = ref(false)
 const showQuickCategoryDialog = ref(false)
+const appliedPrefillCategoryId = ref(null)
 
 const form = ref({
   type: 'expense',
@@ -142,6 +143,51 @@ async function loadTransaction() {
   }
 }
 
+function getReturnToRoute() {
+  return typeof route.query.return_to === 'string' && route.query.return_to
+    ? route.query.return_to
+    : null
+}
+
+function handleBack() {
+  const returnTo = getReturnToRoute()
+
+  if (returnTo) {
+    router.push(returnTo)
+    return
+  }
+
+  router.back()
+}
+
+function applyPrefilledCategory() {
+  if (isEdit.value) {
+    return
+  }
+
+  const nextCategoryId = Number(route.query.category_id)
+
+  if (!Number.isInteger(nextCategoryId) || nextCategoryId <= 0) {
+    return
+  }
+
+  if (appliedPrefillCategoryId.value === nextCategoryId) {
+    return
+  }
+
+  const category = categoriesStore.flatList.find(
+    item => item.id === nextCategoryId
+  )
+
+  if (!category) {
+    return
+  }
+
+  form.value.category_id = category.id
+  form.value.type = category.type
+  appliedPrefillCategoryId.value = nextCategoryId
+}
+
 function handleCategoryCreated(category) {
   form.value.category_id = category.id
   form.value.type = category.type
@@ -163,6 +209,14 @@ async function handleSubmit() {
     } else {
       await store.create(form.value)
     }
+
+    const returnTo = getReturnToRoute()
+
+    if (returnTo) {
+      router.replace(returnTo)
+      return
+    }
+
     router.back()
   } catch (e) {
     toastStore.error(e.message, {
@@ -176,6 +230,14 @@ async function handleSubmit() {
 async function handleDelete() {
   try {
     await store.remove(Number(route.params.id))
+
+    const returnTo = getReturnToRoute()
+
+    if (returnTo) {
+      router.replace(returnTo)
+      return
+    }
+
     router.replace('/transactions')
   } catch (e) {
     toastStore.error(e.message, { title: '账目删除失败' })
@@ -183,5 +245,23 @@ async function handleDelete() {
   showDelete.value = false
 }
 
-onMounted(loadTransaction)
+watch(
+  () => [
+    isEdit.value,
+    route.query.category_id,
+    categoriesStore.flatList.length
+  ],
+  () => {
+    applyPrefilledCategory()
+  },
+  { immediate: true }
+)
+
+onMounted(async () => {
+  if (!categoriesStore.tree.length) {
+    await categoriesStore.fetch()
+  }
+
+  await loadTransaction()
+})
 </script>

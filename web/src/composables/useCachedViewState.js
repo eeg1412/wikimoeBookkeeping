@@ -1,4 +1,4 @@
-import { reactive, watch } from 'vue'
+import { reactive, toValue, watch } from 'vue'
 import { useViewStateStore } from '../stores/viewState.js'
 
 function cloneDefaults(defaults) {
@@ -11,7 +11,11 @@ function cloneDefaults(defaults) {
 
 export function useCachedViewState(key, defaults = {}) {
   const viewStateStore = useViewStateStore()
-  const state = reactive(viewStateStore.getState(key, defaults))
+  const state = reactive(cloneDefaults(defaults))
+
+  function resolveKey() {
+    return toValue(key)
+  }
 
   function replaceState(nextState) {
     for (const currentKey of Object.keys(state)) {
@@ -22,27 +26,35 @@ export function useCachedViewState(key, defaults = {}) {
   }
 
   watch(
+    () => resolveKey(),
+    nextKey => {
+      replaceState(viewStateStore.getState(nextKey, defaults))
+    },
+    { immediate: true }
+  )
+
+  watch(
     state,
     value => {
-      viewStateStore.setState(key, value)
+      viewStateStore.setState(resolveKey(), value)
     },
     { deep: true }
   )
 
   function resetState(overrides = {}) {
     replaceState(overrides)
-    viewStateStore.setState(key, state)
+    viewStateStore.setState(resolveKey(), state)
   }
 
   function clearState() {
     replaceState({})
-    viewStateStore.clearState(key)
+    viewStateStore.clearState(resolveKey())
   }
 
   return {
     state,
     resetState,
     clearState,
-    saveState: () => viewStateStore.setState(key, state)
+    saveState: () => viewStateStore.setState(resolveKey(), state)
   }
 }

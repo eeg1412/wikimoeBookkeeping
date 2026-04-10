@@ -21,6 +21,11 @@ const routes = [
         component: () => import('../pages/Transactions.vue')
       },
       {
+        path: 'categories/:categoryId/transactions',
+        name: 'CategoryTransactions',
+        component: () => import('../pages/Transactions.vue')
+      },
+      {
         path: 'transactions/new',
         name: 'TransactionNew',
         component: () => import('../pages/TransactionForm.vue')

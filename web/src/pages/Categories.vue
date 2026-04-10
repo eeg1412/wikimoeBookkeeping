@@ -42,51 +42,110 @@
         :key="parent.id"
         class="card !p-0 overflow-hidden"
       >
-        <div
-          class="flex flex-wrap items-center gap-2 bg-surface-secondary px-4 py-3 sm:gap-3"
-        >
-          <div
-            class="flex min-w-0 flex-1 items-center gap-3"
-            :style="{ color: parent.color }"
-          >
-            <AppIcon :name="parent.icon" :size="24" />
-            <span class="truncate font-medium">{{ parent.name }}</span>
+        <div class="surface-muted pt-3">
+          <div class="px-4">
+            <div class="flex items-center gap-3">
+              <div class="flex min-w-0 flex-1 items-center gap-3">
+                <div class="shrink-0" :style="{ color: parent.color }">
+                  <AppIcon :name="parent.icon" :size="24" />
+                </div>
+                <p
+                  class="truncate font-medium"
+                  :style="{ color: parent.color }"
+                >
+                  {{ parent.name }}
+                </p>
+              </div>
+              <div class="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-secondary transition-colors hover:bg-surface"
+                  title="新增子类"
+                  @click="openCreate(parent)"
+                >
+                  <AppIcon name="add" :size="16" />
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-secondary transition-colors hover:bg-surface"
+                  title="编辑分类"
+                  @click="openEdit(parent)"
+                >
+                  <AppIcon name="edit" :size="16" />
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                  title="删除分类"
+                  @click="confirmDelete(parent)"
+                >
+                  <AppIcon name="delete" :size="16" />
+                </button>
+              </div>
+            </div>
           </div>
-          <button class="btn-ghost btn-sm text-xs" @click="openCreate(parent)">
-            + 子类
-          </button>
-          <button class="btn-ghost btn-sm text-xs" @click="openEdit(parent)">
-            编辑
-          </button>
-          <button
-            class="btn-ghost btn-sm text-xs text-red-500"
-            @click="confirmDelete(parent)"
+          <router-link
+            class="mt-2 flex items-center justify-between gap-3 border-t border-border/60 px-4 pb-3 pt-2"
+            :to="getCategoryTransactionsRoute(parent)"
+            title="查看该分类账目"
           >
-            删除
-          </button>
+            <span class="truncate text-xs text-on-surface-secondary">
+              {{ formatCategoryTransactionCount(parent) }}
+            </span>
+            <span
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary"
+            >
+              <AppIcon name="forward" :size="16" />
+            </span>
+          </router-link>
         </div>
         <div v-if="parent.children?.length" class="divide-y divide-border">
-          <div
-            v-for="child in parent.children"
-            :key="child.id"
-            class="flex flex-wrap items-center gap-2 px-4 py-2.5 pl-10 sm:gap-3"
-          >
-            <div
-              class="flex min-w-0 flex-1 items-center gap-3"
-              :style="{ color: child.effective_color }"
-            >
-              <AppIcon :name="child.icon" :size="22" />
-              <span class="truncate text-sm">{{ child.name }}</span>
+          <div v-for="child in parent.children" :key="child.id" class="pt-3">
+            <div class="flex items-center gap-3 px-4 pl-10">
+              <div class="flex min-w-0 flex-1 items-center gap-3">
+                <div class="shrink-0" :style="{ color: child.effective_color }">
+                  <AppIcon :name="child.icon" :size="22" />
+                </div>
+                <p
+                  class="truncate text-sm"
+                  :style="{ color: child.effective_color }"
+                >
+                  {{ child.name }}
+                </p>
+              </div>
+              <div class="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-secondary transition-colors hover:bg-surface-secondary"
+                  title="编辑分类"
+                  @click="openEdit(child)"
+                >
+                  <AppIcon name="edit" :size="16" />
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                  title="删除分类"
+                  @click="confirmDelete(child)"
+                >
+                  <AppIcon name="delete" :size="16" />
+                </button>
+              </div>
             </div>
-            <button class="btn-ghost btn-sm text-xs" @click="openEdit(child)">
-              编辑
-            </button>
-            <button
-              class="btn-ghost btn-sm text-xs text-red-500"
-              @click="confirmDelete(child)"
+            <router-link
+              class="mt-2 flex items-center justify-between gap-3 border-t border-border/40 px-4 pb-3 pl-10 pt-2"
+              :to="getCategoryTransactionsRoute(child)"
+              title="查看该分类账目"
             >
-              删除
-            </button>
+              <span class="truncate text-xs text-on-surface-secondary">
+                {{ formatCategoryTransactionCount(child) }}
+              </span>
+              <span
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary"
+              >
+                <AppIcon name="forward" :size="16" />
+              </span>
+            </router-link>
           </div>
         </div>
       </div>
@@ -117,7 +176,7 @@
         <div>
           <label class="label">图标</label>
           <div
-            class="space-y-3 overflow-x-hidden rounded-2xl border border-border bg-surface-secondary/40 p-3"
+            class="surface-muted-soft space-y-3 overflow-x-hidden rounded-2xl border border-border p-3"
           >
             <div
               class="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2"
@@ -145,7 +204,7 @@
                 class="space-y-2"
               >
                 <div
-                  class="sticky top-0 z-10 bg-surface-secondary/95 px-2 py-1 text-xs font-semibold tracking-wide text-on-surface-secondary backdrop-blur"
+                  class="surface-muted-strong sticky top-0 z-10 px-2 py-1 text-xs font-semibold tracking-wide text-on-surface-secondary backdrop-blur"
                 >
                   {{ group.label }}
                 </div>
@@ -160,7 +219,7 @@
                     :class="
                       formIcon === icon.name
                         ? 'font-semibold'
-                        : 'hover:border-border hover:bg-surface-secondary'
+                        : 'hover:border-border hover-surface-muted'
                     "
                     :style="getIconOptionStyle(formIcon === icon.name)"
                     :title="icon.label"
@@ -185,7 +244,7 @@
         </div>
         <div
           v-else
-          class="rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3 text-sm text-on-surface-secondary"
+          class="surface-muted-soft rounded-2xl border border-border px-4 py-3 text-sm text-on-surface-secondary"
         >
           <div class="flex items-center gap-3">
             <span
@@ -245,14 +304,14 @@
     >
       <div class="space-y-4">
         <div
-          class="rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3 text-sm text-on-surface-secondary"
+          class="surface-muted-soft rounded-2xl border border-border px-4 py-3 text-sm text-on-surface-secondary"
         >
           分类「{{ deletingCat?.name }}」当前关联 {{ deleteImpactSummary }}。
         </div>
 
         <div
           v-if="!migrationTargetOptions.length"
-          class="rounded-2xl border border-dashed border-border bg-surface-secondary/20 px-4 py-4 text-sm text-on-surface-secondary"
+          class="surface-muted-faint rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-on-surface-secondary"
         >
           当前没有可迁移到的同类型分类，请先新增一个同类型分类后再继续删除。
         </div>
@@ -477,6 +536,23 @@ function getIconOptionStyle(selected) {
     borderColor: previewAccentColor.value,
     boxShadow: `inset 0 0 0 1px ${previewAccentColor.value}`,
     backgroundColor: toAlphaColor(previewAccentColor.value, 0.12)
+  }
+}
+
+function formatCategoryTransactionCount(category) {
+  const count = Number(category?.transaction_count) || 0
+  const includesChildren =
+    Array.isArray(category?.children) && category.children.length > 0
+
+  return `${count} 条账目${includesChildren ? '（含子分类）' : ''}`
+}
+
+function getCategoryTransactionsRoute(category) {
+  return {
+    name: 'CategoryTransactions',
+    params: {
+      categoryId: category.id
+    }
   }
 }
 

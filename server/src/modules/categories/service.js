@@ -18,17 +18,31 @@ export function listCategories() {
     )
     .all()
 
-  const parents = rows.filter(r => !r.parent_id)
-  return parents.map(p => ({
-    ...p,
-    effective_color: p.color,
-    children: rows
-      .filter(r => r.parent_id === p.id)
-      .map(child => ({
+  const transactionCountMap = getCategoryTransactionCountMap(db)
+  const childrenByParent = buildChildrenByParent(rows)
+
+  return rows
+    .filter(row => !row.parent_id)
+    .map(parent => {
+      const children = (childrenByParent.get(parent.id) || []).map(child => ({
         ...child,
-        effective_color: p.color || child.color || null
+        effective_color: parent.color || child.color || null,
+        transaction_count: transactionCountMap.get(child.id) || 0
       }))
-  }))
+      const directTransactionCount = transactionCountMap.get(parent.id) || 0
+      const childTransactionCount = children.reduce(
+        (total, child) => total + child.transaction_count,
+        0
+      )
+
+      return {
+        ...parent,
+        effective_color: parent.color,
+        direct_transaction_count: directTransactionCount,
+        transaction_count: directTransactionCount + childTransactionCount,
+        children
+      }
+    })
 }
 
 export function getCategoryFlat() {
@@ -39,16 +53,30 @@ export function getCategoryFlat() {
     )
     .all()
 
+  const transactionCountMap = getCategoryTransactionCountMap(db)
   const parentColorMap = new Map(
     rows.filter(row => !row.parent_id).map(row => [row.id, row.color || null])
   )
+  const childTransactionCountByParent = buildChildTransactionCountByParent(
+    rows,
+    transactionCountMap
+  )
 
-  return rows.map(row => ({
-    ...row,
-    effective_color: row.parent_id
-      ? parentColorMap.get(row.parent_id) || row.color || null
-      : row.color || null
-  }))
+  return rows.map(row => {
+    const directTransactionCount = transactionCountMap.get(row.id) || 0
+
+    return {
+      ...row,
+      effective_color: row.parent_id
+        ? parentColorMap.get(row.parent_id) || row.color || null
+        : row.color || null,
+      direct_transaction_count: directTransactionCount,
+      transaction_count: row.parent_id
+        ? directTransactionCount
+        : directTransactionCount +
+          (childTransactionCountByParent.get(row.id) || 0)
+    }
+  })
 }
 
 export function getCategory(id) {
@@ -260,6 +288,52 @@ function getCategoryRow(db, id) {
   return db
     .prepare('SELECT * FROM categories WHERE id = ? AND is_deleted = 0')
     .get(id)
+}
+
+function getCategoryTransactionCountMap(db) {
+  const rows = db
+    .prepare(
+      'SELECT category_id, COUNT(*) as count FROM transactions WHERE is_deleted = 0 GROUP BY category_id'
+    )
+    .all()
+
+  return new Map(rows.map(row => [row.category_id, row.count]))
+}
+
+function buildChildrenByParent(rows) {
+  const childrenByParent = new Map()
+
+  for (const row of rows) {
+    if (!row.parent_id) {
+      continue
+    }
+
+    if (!childrenByParent.has(row.parent_id)) {
+      childrenByParent.set(row.parent_id, [])
+    }
+
+    childrenByParent.get(row.parent_id).push(row)
+  }
+
+  return childrenByParent
+}
+
+function buildChildTransactionCountByParent(rows, transactionCountMap) {
+  const childTransactionCountByParent = new Map()
+
+  for (const row of rows) {
+    if (!row.parent_id) {
+      continue
+    }
+
+    childTransactionCountByParent.set(
+      row.parent_id,
+      (childTransactionCountByParent.get(row.parent_id) || 0) +
+        (transactionCountMap.get(row.id) || 0)
+    )
+  }
+
+  return childTransactionCountByParent
 }
 
 function getDeleteCategoryUsage(db, categoryId) {

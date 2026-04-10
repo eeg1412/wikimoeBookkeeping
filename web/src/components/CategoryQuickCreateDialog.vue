@@ -7,7 +7,7 @@
   >
     <div class="space-y-4">
       <div
-        class="rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3 text-sm text-on-surface-secondary"
+        class="surface-muted-soft rounded-2xl border border-border px-4 py-3 text-sm text-on-surface-secondary"
       >
         保存后会自动选中新分类，不会清空当前正在填写的账目内容。
       </div>
@@ -16,7 +16,7 @@
         <div>
           <label class="label">账目类型</label>
           <div
-            class="rounded-xl border border-border bg-surface-secondary/30 px-4 py-3 text-sm font-medium text-on-surface"
+            class="surface-muted-soft rounded-xl border border-border px-4 py-3 text-sm font-medium text-on-surface"
           >
             {{ typeLabel }}
           </div>
@@ -84,7 +84,7 @@
       <div>
         <label class="label">图标</label>
         <div
-          class="space-y-3 overflow-x-hidden rounded-2xl border border-border bg-surface-secondary/40 p-3"
+          class="surface-muted-soft space-y-3 overflow-x-hidden rounded-2xl border border-border p-3"
         >
           <div
             class="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2"
@@ -113,7 +113,7 @@
               class="space-y-2"
             >
               <div
-                class="sticky top-0 z-10 bg-surface-secondary/95 px-2 py-1 text-xs font-semibold tracking-wide text-on-surface-secondary backdrop-blur"
+                class="surface-muted-strong sticky top-0 z-10 px-2 py-1 text-xs font-semibold tracking-wide text-on-surface-secondary backdrop-blur"
               >
                 {{ group.label }}
               </div>
@@ -128,7 +128,7 @@
                   :class="
                     formIcon === icon.name
                       ? 'font-semibold'
-                      : 'hover:border-border hover:bg-surface-secondary'
+                      : 'hover:border-border hover-surface-muted'
                   "
                   :style="getIconOptionStyle(formIcon === icon.name)"
                   :title="icon.label"
@@ -153,7 +153,7 @@
       </div>
       <div
         v-else
-        class="rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3 text-sm text-on-surface-secondary"
+        class="surface-muted-soft rounded-2xl border border-border px-4 py-3 text-sm text-on-surface-secondary"
       >
         子分类沿用大类分类颜色，当前为 {{ previewAccentColor }}。
       </div>
